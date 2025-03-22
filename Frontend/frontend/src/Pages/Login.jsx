@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import supabase from "../../../../Backend/supabaseClient";
 
@@ -7,59 +7,7 @@ const Login = () => {
   const [enrollment, setEnrollment] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [dots, setDots] = useState([]);
-
-  // Generate the dots with enhanced features
-  useEffect(() => {
-    generateDots();
-    // Regenerate dots periodically for more dynamic effect
-    const interval = setInterval(generateDots, 10000);
-    return () => clearInterval(interval);
-  }, []);
-
-  const generateDots = () => {
-    const newDots = [];
-    const numDots = 60; // Increased number of dots
-    const maxRadius = 350; // Maximum radius for the outer circle
-
-    for (let i = 0; i < numDots; i++) {
-      // Calculate a random radius between inner and outer circle
-      const radius = Math.random() * maxRadius;
-      
-      // Calculate position on the circle
-      const angle = (i / numDots) * Math.PI * 2 + Math.random() * 0.5;
-      const x = Math.cos(angle) * radius;
-      const y = Math.sin(angle) * radius;
-
-      // Size is inversely proportional to radius (smaller when closer to center)
-      const proximityFactor = 1 - (radius / maxRadius);
-      const size = 5 + (proximityFactor * 20);
-      
-      // Calculate clustering - dots closer to center should be more clustered
-      const clusterOffset = proximityFactor * 20;
-      const clusterX = x + (Math.random() * clusterOffset) - (clusterOffset / 2);
-      const clusterY = y + (Math.random() * clusterOffset) - (clusterOffset / 2);
-      
-      // Animation duration varies based on distance from center
-      const animDuration = 3 + (proximityFactor * 5);
-      
-      // Animation delay varies to create a more organic feel
-      const animDelay = Math.random() * 5;
-
-      newDots.push({
-        id: i,
-        x: clusterX,
-        y: clusterY,
-        size: size,
-        proximity: proximityFactor,
-        animDuration: animDuration,
-        animDelay: animDelay
-      });
-    }
-
-    setDots(newDots);
-  };
-
+  
   const handleLogin = async (e) => {
     e.preventDefault();
     setIsLoading(true);
@@ -102,61 +50,74 @@ const Login = () => {
     }
   };
 
-  const renderDots = () => {
-    return dots.map(dot => {
-      // Color transition from blue to red based on proximity
-      const redValue = Math.floor(70 + (185 * dot.proximity));
-      const blueValue = Math.floor(255 - (185 * dot.proximity));
-      
-      return (
-        <div
-          key={dot.id}
-          className="dot"
-          style={{
-            width: `${dot.size}px`,
-            height: `${dot.size}px`,
-            left: `calc(50% + ${dot.x}px)`,
-            top: `calc(50% + ${dot.y}px)`,
-            opacity: 0.2 + (dot.proximity * 0.5),
-            backgroundColor: `rgb(${redValue}, 70, ${blueValue})`,
-            animationDuration: `${dot.animDuration}s`,
-            animationDelay: `${dot.animDelay}s`,
-          }}
-        />
-      );
-    });
-  };
-
   return (
-    <div className="login-container">
-      <div className="dots-container">{renderDots()}</div>
-      <div className="login-box">
-        <h2 className="login-title">Sign in to your Account</h2>
-        <form onSubmit={handleLogin}>
-          <input
-            type="text"
-            placeholder="Enrollment Number"
-            className="input-field"
-            value={enrollment}
-            onChange={(e) => setEnrollment(e.target.value)}
-            required
-          />
-          <input
-            type="password"
-            placeholder="Password"
-            className="input-field"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-          />
-          <p className="forgot-password">Forgot password?</p>
-          <button type="submit" className="login-button" disabled={isLoading}>
-            {isLoading ? "Loading..." : "Continue"}
-          </button>
-        </form>
-        <p className="create-account" onClick={() => navigate("/signup")}>
-          Create New Account
-        </p>
+    <div className="login-page">
+      <div className="login-container">
+        {/* Left panel with background image and tagline */}
+        <div className="left-panel">
+          <div className="logo">PHINEAS</div>
+          
+          
+          <div className="slide-indicators">
+            <span className="indicator"></span>
+            <span className="indicator"></span>
+            <span className="indicator active"></span>
+          </div>
+        </div>
+
+        {/* Right panel with login form */}
+        <div className="right-panel">
+          <div className="form-container">
+            <h1>Sign in to your Account</h1>
+            <p className="account-link">
+              Don't have an account? <span onClick={() => navigate("/signup")}>Create New Account</span>
+            </p>
+
+            <form onSubmit={handleLogin}>
+              <div className="form-group">
+                <input
+                  type="text"
+                  placeholder="Enrollment Number"
+                  className="input-field"
+                  value={enrollment}
+                  onChange={(e) => setEnrollment(e.target.value)}
+                  required
+                />
+              </div>
+              <div className="form-group">
+                <input
+                  type="password"
+                  placeholder="Password"
+                  className="input-field"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                />
+              </div>
+              <p className="forgot-password">Forgot password?</p>
+              <button type="submit" className="login-button" disabled={isLoading}>
+                {isLoading ? "Loading..." : "Continue"}
+              </button>
+            </form>
+
+            <div className="separator">
+              <span>Or sign in with</span>
+            </div>
+
+            <div className="social-logins">
+              <button className="google-login">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 48 48">
+                  <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+                  <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+                  <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+                  <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+                </svg>
+                <span>Dont Sign In With GOOGLE</span>
+              </button>
+            
+            </div>
+          </div>
+        </div>
       </div>
 
       <style jsx>{`
@@ -169,93 +130,161 @@ const Login = () => {
             Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
         }
 
-        /* Login container */
-        .login-container {
+        /* Login page container */
+        .login-page {
+          min-height: 100vh;
+          width: 100vw;
           display: flex;
           justify-content: center;
           align-items: center;
-          height: 100vh;
-          width: 100vw;
           background-color: #1a1a1a;
-          position: relative;
+          padding: 20px;
+        }
+
+        /* Main login container */
+        .login-container {
+          display: flex;
+          width: 100%;
+          max-width: 1000px;
+          height: 600px;
+          border-radius: 20px;
           overflow: hidden;
+          box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
         }
 
-        /* Dots container */
-        .dots-container {
-          position: absolute;
-          width: 100%;
-          height: 100%;
-          pointer-events: none;
-        }
-
-        /* Individual dot */
-        .dot {
-          position: absolute;
-          border-radius: 50%;
-          transition: all 0.3s ease;
-          animation: floatComplex infinite ease-in-out;
-        }
-
-        @keyframes floatComplex {
-          0% {
-            transform: translateY(0) translateX(0) scale(1);
-          }
-          25% {
-            transform: translateY(-15px) translateX(10px) scale(1.05);
-          }
-          50% {
-            transform: translateY(-5px) translateX(15px) scale(1);
-          }
-          75% {
-            transform: translateY(-20px) translateX(5px) scale(0.95);
-          }
-          100% {
-            transform: translateY(0) translateX(0) scale(1);
-          }
-        }
-
-        /* Login box */
-        .login-box {
-          width: 100%;
-          max-width: 400px;
-          padding: 32px;
-          border-radius: 16px;
-          background-color: rgba(42, 42, 42, 0.8);
-          box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3),
-            0 0 40px rgba(255, 100, 100, 0.15);
-          text-align: center;
-          border: 1px solid #ff4f5a33;
+        /* Left panel */
+        .left-panel {
+          width: 50%;
+          background-image: url('/path/to/desert-image.jpg');
+          background-size: cover;
+          background-position: center;
           position: relative;
-          z-index: 10;
-          backdrop-filter: blur(10px);
+          display: flex;
+          flex-direction: column;
+          justify-content: space-between;
+          padding: 30px;
+          background: linear-gradient(135deg, #ff4f5a 0%, #800020 100%);
+          color: white;
         }
 
-        /* Title */
-        .login-title {
+        /* Logo */
+        .logo {
           font-size: 24px;
-          font-weight: 600;
-          color: #fff;
-          margin-bottom: 24px;
+          font-weight: bold;
         }
 
-        /* Input field */
+        /* Back to website link */
+        .back-to-website {
+          position: absolute;
+          top: 30px;
+          right: 30px;
+        }
+
+        .back-to-website a {
+          color: white;
+          text-decoration: none;
+          background-color: rgba(255, 255, 255, 0.2);
+          padding: 8px 16px;
+          border-radius: 20px;
+          font-size: 14px;
+          display: flex;
+          align-items: center;
+        }
+
+        .back-to-website a:after {
+          content: "→";
+          margin-left: 5px;
+        }
+
+        /* Tagline */
+        .tagline {
+          margin-bottom: 80px;
+        }
+
+        .tagline h2 {
+          font-size: 36px;
+          font-weight: 500;
+          line-height: 1.3;
+        }
+
+        /* Slide indicators */
+        .slide-indicators {
+          display: flex;
+          gap: 10px;
+          margin-bottom: 30px;
+        }
+
+        .indicator {
+          width: 30px;
+          height: 4px;
+          background-color: rgba(255, 255, 255, 0.3);
+          border-radius: 2px;
+        }
+
+        .indicator.active {
+          background-color: white;
+        }
+
+        /* Right panel */
+        .right-panel {
+          width: 50%;
+          background-color: #1a1a1a;
+          color: white;
+          padding: 40px;
+          display: flex;
+          flex-direction: column;
+          justify-content: center;
+        }
+
+        .form-container {
+          max-width: 400px;
+          margin: 0 auto;
+        }
+
+        /* Form header */
+        .form-container h1 {
+          font-size: 32px;
+          font-weight: 600;
+          margin-bottom: 15px;
+        }
+
+        .account-link {
+          margin-bottom: 30px;
+          color: #999;
+          font-size: 14px;
+        }
+
+        .account-link span {
+          color: #ff4f5a;
+          cursor: pointer;
+          text-decoration: none;
+        }
+
+        .account-link span:hover {
+          text-decoration: underline;
+        }
+
+        /* Form groups */
+        .form-group {
+          margin-bottom: 15px;
+        }
+
+        /* Input fields */
         .input-field {
           width: 100%;
-          padding: 12px;
-          margin: 12px 0;
+          padding: 14px;
           border-radius: 8px;
-          border: 1px solid #ff4f5a33;
-          background-color: #333;
-          color: #fff;
-          font-size: 14px;
+          border: 1px solid #333;
+          background-color: #2a2a2a;
+          color: white;
+          font-size: 16px;
           transition: border-color 0.2s;
         }
 
         .input-field:focus {
           outline: none;
           border-color: #ff4f5a;
-          box-shadow: 0 0 0 2px #ff4f5a33;
+          box-shadow: 0 0 0 2px rgba(255, 79, 90, 0.2);
         }
 
         .input-field::placeholder {
@@ -267,32 +296,30 @@ const Login = () => {
           font-size: 14px;
           color: #ff4f5a;
           text-align: right;
-          margin-top: 8px;
+          margin: 10px 0 25px;
           cursor: pointer;
-          transition: color 0.2s;
         }
 
         .forgot-password:hover {
-          color: #ff3a47;
+          text-decoration: underline;
         }
 
         /* Login button */
         .login-button {
           width: 100%;
-          padding: 12px;
-          margin-top: 20px;
+          padding: 14px;
           border-radius: 8px;
           border: none;
-          background: linear-gradient(135deg, #ff4f5a 0%, #800020 100%);
+          background-color: #ff4f5a;
           color: white;
           font-size: 16px;
           font-weight: 500;
           cursor: pointer;
-          transition: opacity 0.2s;
+          transition: background-color 0.2s;
         }
 
         .login-button:hover {
-          opacity: 0.9;
+          background-color: #ff3a47;
         }
 
         .login-button:disabled {
@@ -300,24 +327,83 @@ const Login = () => {
           cursor: not-allowed;
         }
 
-        /* Create account */
-        .create-account {
+        /* Separator */
+        .separator {
+          display: flex;
+          align-items: center;
+          margin: 25px 0;
+          color: #999;
           font-size: 14px;
-          margin-top: 20px;
-          color: #ccc;
-          cursor: pointer;
-          transition: color 0.2s;
         }
 
-        .create-account:hover {
-          color: #ff4f5a;
+        .separator:before,
+        .separator:after {
+          content: "";
+          flex: 1;
+          height: 1px;
+          background-color: #333;
+        }
+
+        .separator span {
+          padding: 0 15px;
+        }
+
+        /* Social logins */
+        .social-logins {
+          display: flex;
+          gap: 15px;
+        }
+
+        .google-login,
+        .apple-login {
+          flex: 1;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 10px;
+          padding: 12px;
+          border-radius: 8px;
+          font-size: 14px;
+          font-weight: 500;
+          cursor: pointer;
+          background-color: #2a2a2a;
+          border: 1px solid #333;
+          color: white;
+          transition: background-color 0.2s;
+        }
+
+        .google-login:hover,
+        .apple-login:hover {
+          background-color: #333;
         }
 
         /* Media Queries */
-        @media (max-width: 480px) {
-          .login-box {
-            max-width: 90%;
-            padding: 24px;
+        @media (max-width: 768px) {
+          .login-container {
+            flex-direction: column;
+            height: auto;
+          }
+
+          .left-panel, 
+          .right-panel {
+            width: 100%;
+          }
+
+          .left-panel {
+            height: 250px;
+            padding: 20px;
+          }
+
+          .right-panel {
+            padding: 30px 20px;
+          }
+
+          .tagline {
+            margin-bottom: 40px;
+          }
+
+          .tagline h2 {
+            font-size: 28px;
           }
         }
       `}</style>
