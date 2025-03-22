@@ -2,22 +2,43 @@ import React from "react";
 import { Link } from "react-router-dom";
 
 export default function Sidebar() {
-    return (
-        <div style={{
-            width: "200px",
-            height: "100vh",
-            background: "#222",
+  return (
+    <div
+      style={{
+        width: "220px", // Slightly wider for better spacing
+        height: "100vh",
+        background: "#222",
+        color: "#fff",
+        padding: "20px",
+        display: "flex",
+        flexDirection: "column",
+      }}
+    >
+      <h2 style={{ textAlign: "center", marginBottom: "20px" }}>Menu</h2>
+      {/* {[
+        { to: "/", label: "Home" },
+        { to: "/student-dashboard", label: "Student Dashboard" },
+        { to: "/faculty-dashboard", label: "Faculty Dashboard" },
+        { to: "/admin-dashboard", label: "Admin Dashboard" },
+        { to: "/report", label: "Reports" },
+      ].map((item) => (
+        <Link
+          key={item.to}
+          to={item.to}
+          style={{
             color: "#fff",
-            padding: "20px",
-            display: "flex",
-            flexDirection: "column"
-        }}>
-            <h2 style={{ textAlign: "center" }}>Menu</h2>
-            <Link to="/" style={{ color: "#fff", textDecoration: "none", marginBottom: "10px" }}>Home</Link>
-            <Link to="/student-dashboard" style={{ color: "#fff", textDecoration: "none", marginBottom: "10px" }}>Student Dashboard</Link>
-            <Link to="/faculty-dashboard" style={{ color: "#fff", textDecoration: "none", marginBottom: "10px" }}>Faculty Dashboard</Link>
-            <Link to="/admin-dashboard" style={{ color: "#fff", textDecoration: "none", marginBottom: "10px" }}>Admin Dashboard</Link>
-            <Link to="/report" style={{ color: "#fff", textDecoration: "none" }}>Reports</Link>
-        </div>
-    );
+            textDecoration: "none",
+            padding: "10px",
+            display: "block",
+            borderRadius: "5px",
+            transition: "background 0.3s",
+          }}
+          onMouseEnter={(e) => (e.target.style.background = "#444")}
+          onMouseLeave={(e) => (e.target.style.background = "transparent")}
+        >
+          {item.label}
+        </Link>
+      ))} */}
+    </div>
+  );
 }

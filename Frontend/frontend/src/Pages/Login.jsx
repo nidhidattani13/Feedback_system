@@ -26,7 +26,7 @@ const containerStyle = {
   alignItems: "center",
   height: "100vh",
   width: "100vw",
-  backgroundColor: "#F2F1EF"
+  backgroundColor: "#F2F1EF",
 };
 
 const boxStyle = {
@@ -37,13 +37,13 @@ const boxStyle = {
   backgroundColor: "white",
   boxShadow: "0 8px 24px rgba(0, 0, 0, 0.2)",
   textAlign: "center",
-  boxSizing: "border-box"
+  boxSizing: "border-box",
 };
 
 const titleStyle = {
   fontSize: "20px",
   fontWeight: "600",
-  color: "#333"
+  color: "#333",
 };
 
 const inputStyle = {
@@ -54,13 +54,13 @@ const inputStyle = {
   border: "1px solid #ddd",
   backgroundColor: "#f8f8f8",
   fontSize: "14px",
-  boxSizing: "border-box"
+  boxSizing: "border-box",
 };
 
 const forgotPasswordStyle = {
   fontSize: "14px",
   color: "red",
-  cursor: "pointer"
+  cursor: "pointer",
 };
 
 const buttonStyle = {
@@ -72,14 +72,14 @@ const buttonStyle = {
   backgroundColor: "#FF4F5A",
   color: "white",
   fontSize: "16px",
-  cursor: "pointer"
+  cursor: "pointer",
 };
 
 const linkStyle = {
   fontSize: "14px",
   marginTop: "16px",
   color: "#555",
-  cursor: "pointer"
+  cursor: "pointer",
 };
 
 export default LoginPage;
