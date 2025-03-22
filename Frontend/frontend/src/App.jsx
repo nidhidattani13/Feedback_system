@@ -5,7 +5,7 @@ import {
   Route,
 } from "react-router-dom";
 import Home from "./Pages/Home.jsx";
-import StudentDashboard from "./Pages/StudentDashboard.jsx";
+import StudentDashboard from "./Pages/Studentdashboard.jsx";
 import FacultyDashboard from "./Pages/FacultyDashboard.jsx";
 import AdminDashboard from "./Pages/AdminDashboard.jsx";
 import ReportView from "./Pages/ReportView.jsx";

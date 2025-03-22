@@ -1,5 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import supabase from "../../../../Backend/supabaseClient"; // Adjust path as needed
+
 
 const SignupPage = () => {
   const navigate = useNavigate();
@@ -10,19 +12,23 @@ const SignupPage = () => {
   const [errors, setErrors] = useState({});
   const [touched, setTouched] = useState({});
 
+  // Validation Logic
   const validate = (field, value) => {
     let validationErrors = { ...errors };
+
     if (field === "name" && !/^[A-Za-z ]+$/.test(value)) {
       validationErrors.name = "Name should only contain alphabets.";
     } else {
       delete validationErrors.name;
     }
+
     if (field === "enrollment" && !/^[0-9]{11}$/.test(value)) {
       validationErrors.enrollment =
         "Enrollment number must be exactly 11 digits.";
     } else {
       delete validationErrors.enrollment;
     }
+
     if (field === "password") {
       let passwordErrors = [];
       if (value.length < 11)
@@ -38,32 +44,65 @@ const SignupPage = () => {
       if (passwordErrors.length > 0) validationErrors.password = passwordErrors;
       else delete validationErrors.password;
     }
+
     if (field === "confirmPassword" && value !== password) {
       validationErrors.confirmPassword = "Passwords do not match.";
     } else {
       delete validationErrors.confirmPassword;
     }
+
     setErrors(validationErrors);
   };
 
+  // Handle Input Changes
   const handleInputChange = (setter, field) => (e) => {
     setTouched((prev) => ({ ...prev, [field]: true }));
     setter(e.target.value);
     validate(field, e.target.value);
   };
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (Object.keys(errors).length === 0) {
-      console.log("Signup successful");
+  // Handle Signup API Call
+  // Using Supabase for signup instead of fetch
+const handleSignup = async (e) => {
+  e.preventDefault();
+
+  if (Object.keys(errors).length > 0) {
+    alert("Please fix the errors before submitting.");
+    return;
+  }
+
+  if (password !== confirmPassword) {
+    alert("Passwords do not match!");
+    return;
+  }
+
+  try {
+    const { data, error } = await supabase.from("users").insert([
+      {
+        name,
+        enrollment,
+        password, // Consider hashing password before inserting
+      },
+    ]);
+
+    if (error) {
+      throw error;
     }
-  };
+
+    alert("✅ Signup successful! 🎉");
+    navigate("/login");
+  } catch (error) {
+    console.error("❌ Error:", error.message);
+    alert("Signup failed. Please try again.");
+  }
+};
+
 
   return (
     <div style={containerStyle}>
       <div style={boxStyle}>
         <h2 style={titleStyle}>Create an Account</h2>
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSignup}>
           <input
             type="text"
             placeholder="Name"
@@ -74,6 +113,7 @@ const SignupPage = () => {
           {touched.name && errors.name && (
             <p style={errorStyle}>{errors.name}</p>
           )}
+
           <input
             type="text"
             placeholder="Enrollment Number"
@@ -84,6 +124,7 @@ const SignupPage = () => {
           {touched.enrollment && errors.enrollment && (
             <p style={errorStyle}>{errors.enrollment}</p>
           )}
+
           <input
             type="password"
             placeholder="Password"
@@ -100,6 +141,7 @@ const SignupPage = () => {
               ))}
             </ul>
           )}
+
           <input
             type="password"
             placeholder="Confirm Password"
@@ -110,6 +152,7 @@ const SignupPage = () => {
           {touched.confirmPassword && errors.confirmPassword && (
             <p style={errorStyle}>{errors.confirmPassword}</p>
           )}
+
           <button
             type="submit"
             style={{
@@ -132,6 +175,7 @@ const SignupPage = () => {
   );
 };
 
+// Styles
 const containerStyle = {
   display: "flex",
   justifyContent: "center",
