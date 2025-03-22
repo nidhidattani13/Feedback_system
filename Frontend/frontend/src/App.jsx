@@ -1,7 +1,7 @@
 import React from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import Home from "./Pages/Home.jsx";
-import StudentDashboard from "./Pages/Studentdashboard.jsx";
+import StudentDashboard from "./Pages/StudentDashboard.jsx";
 import FacultyDashboard from "./Pages/FacultyDashboard.jsx";
 import AdminDashboard from "./Pages/AdminDashboard.jsx";
 import ReportView from "./Pages/ReportView.jsx";
@@ -19,7 +19,7 @@ export default function App() {
 
         {/* Dashboard Pages Wrapped in Layout */}
         <Route element={<Layout />}>
-          <Route path="/" element={<Home />} />
+          <Route path="/" element={<Login />} />
           <Route path="/student-dashboard" element={<StudentDashboard />} />
           <Route path="/faculty-dashboard" element={<FacultyDashboard />} />
           <Route path="/admin-dashboard" element={<AdminDashboard />} />
