@@ -7,7 +7,7 @@ const Login = () => {
   const [enrollment, setEnrollment] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  
+
   const handleLogin = async (e) => {
     e.preventDefault();
     setIsLoading(true);
@@ -56,8 +56,7 @@ const Login = () => {
         {/* Left panel with background image and tagline */}
         <div className="left-panel">
           <div className="logo">PHINEAS</div>
-          
-          
+
           <div className="slide-indicators">
             <span className="indicator"></span>
             <span className="indicator"></span>
@@ -70,7 +69,10 @@ const Login = () => {
           <div className="form-container">
             <h1>Sign in to your Account</h1>
             <p className="account-link">
-              Don't have an account? <span onClick={() => navigate("/signup")}>Create New Account</span>
+              Don't have an account?{" "}
+              <span onClick={() => navigate("/signup")}>
+                Create New Account
+              </span>
             </p>
 
             <form onSubmit={handleLogin}>
@@ -95,7 +97,11 @@ const Login = () => {
                 />
               </div>
               <p className="forgot-password">Forgot password?</p>
-              <button type="submit" className="login-button" disabled={isLoading}>
+              <button
+                type="submit"
+                className="login-button"
+                disabled={isLoading}
+              >
                 {isLoading ? "Loading..." : "Continue"}
               </button>
             </form>
@@ -106,15 +112,31 @@ const Login = () => {
 
             <div className="social-logins">
               <button className="google-login">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 48 48">
-                  <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
-                  <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
-                  <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
-                  <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="20"
+                  height="20"
+                  viewBox="0 0 48 48"
+                >
+                  <path
+                    fill="#EA4335"
+                    d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"
+                  />
+                  <path
+                    fill="#4285F4"
+                    d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"
+                  />
+                  <path
+                    fill="#FBBC05"
+                    d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"
+                  />
+                  <path
+                    fill="#34A853"
+                    d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"
+                  />
                 </svg>
                 <span>Dont Sign In With GOOGLE</span>
               </button>
-            
             </div>
           </div>
         </div>
@@ -155,7 +177,7 @@ const Login = () => {
         /* Left panel */
         .left-panel {
           width: 50%;
-          background-image: url('/path/to/desert-image.jpg');
+          background-image: url("/path/to/desert-image.jpg");
           background-size: cover;
           background-position: center;
           position: relative;
@@ -384,7 +406,7 @@ const Login = () => {
             height: auto;
           }
 
-          .left-panel, 
+          .left-panel,
           .right-panel {
             width: 100%;
           }
@@ -404,6 +426,144 @@ const Login = () => {
 
           .tagline h2 {
             font-size: 28px;
+          }
+          /* Symbiote-inspired gradient for the left panel */
+          .left-panel {
+            width: 50%;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 30px;
+            color: white;
+            overflow: hidden;
+            /* Remove the existing background */
+            background-image: none;
+            /* Base dark background */
+            background-color: #000000;
+          }
+
+          /* Symbiote effect container */
+          .left-panel::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            /* Create the main symbiote gradient base */
+            background: radial-gradient(
+              circle at 30% 40%,
+              #ff0000 0%,
+              #990000 30%,
+              #550000 50%,
+              #220000 70%,
+              #000000 100%
+            );
+            /* Add more organic looking texture */
+            background-blend-mode: multiply;
+            z-index: 1;
+          }
+
+          /* Animated symbiote tendrils */
+          .left-panel::after {
+            content: "";
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            right: -50%;
+            bottom: -50%;
+            background: 
+    /* Multiple radial gradients for the organic, vein-like appearance */ radial-gradient(
+                circle at 70% 60%,
+                rgba(255, 0, 0, 0.8) 0%,
+                rgba(0, 0, 0, 0) 30%
+              ),
+              radial-gradient(
+                circle at 20% 30%,
+                rgba(255, 0, 0, 0.7) 0%,
+                rgba(0, 0, 0, 0) 20%
+              ),
+              radial-gradient(
+                circle at 90% 20%,
+                rgba(255, 0, 0, 0.7) 0%,
+                rgba(0, 0, 0, 0) 25%
+              ),
+              radial-gradient(
+                circle at 10% 80%,
+                rgba(255, 0, 0, 0.6) 0%,
+                rgba(0, 0, 0, 0) 30%
+              ),
+              /* Vertical wavy tendrils */
+                repeating-linear-gradient(
+                  0deg,
+                  transparent 0%,
+                  rgba(200, 0, 0, 0.2) 2%,
+                  transparent 3%,
+                  rgba(200, 0, 0, 0.1) 5%
+                ),
+              /* Horizontal wavy tendrils */
+                repeating-linear-gradient(
+                  90deg,
+                  transparent 0%,
+                  rgba(200, 0, 0, 0.2) 1%,
+                  transparent 2%,
+                  rgba(200, 0, 0, 0.1) 3%
+                );
+            /* Add animation for flowing effect */
+            animation: symbioteFlow 20s infinite alternate;
+            /* Use screen blend mode for glowing effect */
+            mix-blend-mode: screen;
+            opacity: 0.8;
+            z-index: 2;
+          }
+
+          /* Pulse effect for the symbiote */
+          @keyframes symbioteFlow {
+            0% {
+              transform: rotate(0deg) scale(1);
+            }
+            25% {
+              transform: rotate(5deg) scale(1.05);
+            }
+            50% {
+              transform: rotate(-2deg) scale(1.02);
+            }
+            75% {
+              transform: rotate(3deg) scale(1.07);
+            }
+            100% {
+              transform: rotate(-3deg) scale(1.03);
+            }
+          }
+
+          /* Ensure content stays above the background effects */
+          .logo,
+          .slide-indicators {
+            position: relative;
+            z-index: 3;
+          }
+
+          /* Add glow effect to the logo */
+          .logo {
+            font-size: 24px;
+            font-weight: bold;
+            text-shadow: 0 0 10px rgba(255, 0, 0, 0.7);
+            letter-spacing: 1px;
+          }
+
+          /* Style the indicators to match symbiote theme */
+          .indicator {
+            width: 30px;
+            height: 4px;
+            background-color: rgba(255, 255, 255, 0.15);
+            border-radius: 2px;
+            transition: all 0.5s ease;
+          }
+
+          .indicator.active {
+            background-color: rgba(255, 0, 0, 0.8);
+            box-shadow: 0 0 8px rgba(255, 0, 0, 0.7);
           }
         }
       `}</style>

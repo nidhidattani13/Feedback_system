@@ -1,8 +1,12 @@
-require("dotenv").config();
-const express = require("express");
-const cors = require("cors");
-const authRoutes = require("./routes/auth");
-const { createClient } = require("@supabase/supabase-js");
+import dotenv from 'dotenv';
+import express from 'express';
+import cors from 'cors';
+// import authRoutes from './routes/auth'; // ✅ Correct
+import { createClient } from '@supabase/supabase-js';
+import authRoutes from './routes/auth.js';
+
+// Load environment variables
+dotenv.config();
 
 // Supabase connection
 const supabaseUrl = process.env.SUPABASE_URL;

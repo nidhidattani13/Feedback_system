@@ -1,7 +1,9 @@
-const express = require("express");
+// routes/auth.js
+import express from "express";
+import bcrypt from "bcryptjs";
+import supabase from "../supabaseClient.js"; 
+
 const router = express.Router();
-const bcrypt = require("bcryptjs");
-const supabase = require("../supabaseClient"); // Correct path
 
 // Signup route
 router.post("/signup", async (req, res) => {
@@ -23,7 +25,7 @@ router.post("/signup", async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, 10);
 
     // Insert new user
-    const { data, error } = await supabase.from("users").insert([
+    const { error } = await supabase.from("users").insert([
       {
         name,
         enrollment,
@@ -41,4 +43,4 @@ router.post("/signup", async (req, res) => {
   }
 });
 
-module.exports = router;
+export default router;
