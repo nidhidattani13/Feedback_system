@@ -8,6 +8,8 @@ import ReportView from "./Pages/ReportView.jsx";
 import Login from "./Pages/Login.jsx";
 import Signup from "./Pages/Signup.jsx";
 import Layout from "./components/Layout.jsx"; // Move Layout into its own file
+import "./styles/Global.css"; // This should import Tailwind
+import "./styles/Theme.css"; // Your custom theme
 
 export default function App() {
   return (
