@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import FacultyProfile from "./FacultyProfile"; // Import the FacultyProfile component
+import * as XLSX from 'xlsx'; // Import xlsx library
 
 const FacultyDashboard = () => {
   const [subjects, setSubjects] = useState([]);
@@ -14,6 +16,14 @@ const FacultyDashboard = () => {
   const [userData, setUserData] = useState(null);
   const [expandedSubject, setExpandedSubject] = useState(null);
   const [expandedGroup, setExpandedGroup] = useState(null);
+  
+  // Add state for faculty profile modal
+  const [showProfileModal, setShowProfileModal] = useState(false);
+  
+  // New state variables for academic plan
+  const [subjectPlanFile, setSubjectPlanFile] = useState(null);
+  const [parsedPlan, setParsedPlan] = useState([]);
+  const [showPlanPreview, setShowPlanPreview] = useState(false);
 
   // Get user data from localStorage on component mount
   useEffect(() => {
@@ -21,23 +31,112 @@ const FacultyDashboard = () => {
     if (userDataString) {
       const parsedUserData = JSON.parse(userDataString);
       setUserData(parsedUserData);
+    } else {
+      // Default user data if nothing in localStorage
+      setUserData({
+        name: "Dr. Jane Smith",
+        title: "Associate Professor",
+        department: "Computer Science",
+        email: "j.smith@university.edu",
+        phone: "+1 (555) 234-5678",
+        office: "Tech Building, Room 305",
+        officeHours: "Tue, Thu: 1-3 PM",
+        researchInterests: "AI, Machine Learning, Computer Vision",
+        courses: "CS101, CS450, CS550",
+        bio: "Faculty member specializing in artificial intelligence and machine learning with 10 years of teaching experience.",
+      });
+    }
+    
+    // Load subjects from localStorage if available
+    const storedSubjects = localStorage.getItem("subjects");
+    if (storedSubjects) {
+      setSubjects(JSON.parse(storedSubjects));
     }
   }, []);
 
+  // Function to open profile modal
+  const openProfileModal = () => {
+    setShowProfileModal(true);
+  };
+
+  // Function to close profile modal
+  const closeProfileModal = () => {
+    setShowProfileModal(false);
+  };
+
+  // Function to save updated profile data
+  const handleProfileUpdate = (updatedData) => {
+    setUserData(updatedData);
+    // In a real application, you would also save this to localStorage or your backend
+    localStorage.setItem("userData", JSON.stringify(updatedData));
+  };
+
+  // Function to parse Excel file for subject plan
+  const handleSubjectPlanUpload = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setSubjectPlanFile(file);
+      
+      const reader = new FileReader();
+      reader.onload = (evt) => {
+        try {
+          const binaryData = evt.target.result;
+          const workbook = XLSX.read(binaryData, { type: 'binary' });
+          const firstSheetName = workbook.SheetNames[0];
+          const worksheet = workbook.Sheets[firstSheetName];
+          
+          // Convert the worksheet to JSON
+          const jsonData = XLSX.utils.sheet_to_json(worksheet);
+          
+          // Validate data has Week and Topic columns
+          if (jsonData.length > 0 && 'Week' in jsonData[0] && 'Topic' in jsonData[0]) {
+            setParsedPlan(jsonData);
+            setShowPlanPreview(true);
+          } else {
+            alert("Invalid file format. Please ensure your Excel has 'Week' and 'Topic' columns.");
+            setSubjectPlanFile(null);
+            setParsedPlan([]);
+            setShowPlanPreview(false);
+          }
+        } catch (error) {
+          console.error("Error parsing Excel file:", error);
+          alert("Error parsing the file. Please make sure it's a valid Excel file.");
+          setSubjectPlanFile(null);
+          setParsedPlan([]);
+          setShowPlanPreview(false);
+        }
+      };
+      reader.onerror = () => {
+        alert("Error reading the file");
+        setSubjectPlanFile(null);
+      };
+      reader.readAsBinaryString(file);
+    }
+  };
+
   const handleAddSubject = () => {
     if (newSubject.trim() !== "") {
-      setSubjects([
-        ...subjects,
-        {
-          name: newSubject,
-          info: newSubjectInfo,
-          members: 0,
-          lastUpdated: new Date().toLocaleDateString(),
-          isActive: true,
-        },
-      ]);
+      const newSubjectObj = {
+        name: newSubject,
+        info: newSubjectInfo,
+        members: 0,
+        lastUpdated: new Date().toLocaleDateString(),
+        isActive: true,
+        plan: parsedPlan.length > 0 ? parsedPlan : null,
+      };
+      
+      const updatedSubjects = [...subjects, newSubjectObj];
+      setSubjects(updatedSubjects);
+      
+      // Save to localStorage
+      localStorage.setItem("subjects", JSON.stringify(updatedSubjects));
+      
+      // Reset form
       setNewSubject("");
       setNewSubjectInfo("");
+      setSubjectPlanFile(null);
+      setParsedPlan([]);
+      setShowPlanPreview(false);
       setShowSubjectModal(false);
     }
   };
@@ -134,10 +233,26 @@ const FacultyDashboard = () => {
           </div>
 
           {userData && (
-            <div className="user-info-compact">
+            <div className="user-info-compact" onClick={openProfileModal}>
               <span>Welcome, {userData.name || "Faculty"}</span>
               <div className="department-badge">
                 {userData.department || "Faculty"}
+              </div>
+              <div className="profile-icon">
+                {userData.avatar ? (
+                  <img
+                    src={userData.avatar}
+                    alt="Profile"
+                    className="avatar-mini"
+                  />
+                ) : (
+                  <div className="avatar-placeholder-mini">
+                    {userData.name
+                      .split(" ")
+                      .map((n) => n[0])
+                      .join("")}
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -246,6 +361,16 @@ const FacultyDashboard = () => {
                                       {subject.isActive ? "Active" : "Inactive"}
                                     </button>
                                   </div>
+                                  {subject.plan && (
+                                    <div className="detail-item">
+                                      <span className="detail-label">
+                                        Academic Plan:
+                                      </span>
+                                      <span className="detail-value">
+                                        {subject.plan.length} weeks
+                                      </span>
+                                    </div>
+                                  )}
                                   <div className="button-row">
                                     <button className="manage-btn">
                                       Manage
@@ -427,6 +552,13 @@ const FacultyDashboard = () => {
         </div>
       </div>
 
+      {/* Include the FacultyProfile component */}
+      <FacultyProfile
+        isOpen={showProfileModal}
+        onClose={closeProfileModal}
+        initialData={userData}
+      />
+
       {/* Subject Modal */}
       <AnimatePresence>
         {showSubjectModal && (
@@ -460,12 +592,86 @@ const FacultyDashboard = () => {
                 onChange={(e) => setNewSubjectInfo(e.target.value)}
                 className="input-field"
               />
+              
+              {/* Academic Plan File Upload */}
+              <div className="file-upload-container">
+                <label className="file-upload-label">
+                  <input
+                    type="file"
+                    accept=".xlsx,.xls"
+                    onChange={handleSubjectPlanUpload}
+                    className="file-input"
+                  />
+                  <div className="custom-file-upload">
+                    <span className="upload-icon">📄</span>
+                    <span className="upload-text">
+                      {subjectPlanFile
+                        ? subjectPlanFile.name
+                        : "Upload Academic Plan (Excel)"}
+                    </span>
+                  </div>
+                </label>
+                {subjectPlanFile && (
+                  <div className="file-selected">
+                    <div className="file-info">
+                      <span className="file-name">{subjectPlanFile.name}</span>
+                      <span className="file-size">
+                        {(subjectPlanFile.size / 1024).toFixed(2)} KB
+                      </span>
+                    </div>
+                    <button
+                      className="remove-file-btn"
+                      onClick={() => {
+                        setSubjectPlanFile(null);
+                        setParsedPlan([]);
+                        setShowPlanPreview(false);
+                      }}
+                    >
+                      ✕
+                    </button>
+                  </div>
+                )}
+                <div className="file-format-hint">
+                  Required format: Excel with columns 'Week' and 'Topic'
+                </div>
+              </div>
+              
+              {/* Academic Plan Preview */}
+              {showPlanPreview && parsedPlan.length > 0 && (
+                <div className="plan-preview-container">
+                  <h3 className="preview-heading">Academic Plan Preview</h3>
+                  <div className="plan-table-wrapper">
+                    <table className="plan-table">
+                      <thead>
+                        <tr>
+                          <th>Week</th>
+                          <th>Topic</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {parsedPlan.map((week, idx) => (
+                          <tr key={idx}>
+                            <td>{week.Week}</td>
+                            <td>{week.Topic}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+              
               <div className="button-container">
                 <button onClick={handleAddSubject} className="confirm-button">
                   Add
                 </button>
                 <button
-                  onClick={() => setShowSubjectModal(false)}
+                  onClick={() => {
+                    setShowSubjectModal(false);
+                    setSubjectPlanFile(null);
+                    setParsedPlan([]);
+                    setShowPlanPreview(false);
+                  }}
                   className="cancel-button"
                 >
                   Cancel
@@ -562,7 +768,8 @@ const FacultyDashboard = () => {
         )}
       </AnimatePresence>
 
-      <style jsx>{`
+      <style jsx>
+        {`
         /* Global styles */
         * {
           box-sizing: border-box;
@@ -628,6 +835,14 @@ const FacultyDashboard = () => {
           align-items: center;
           gap: 10px;
           font-size: 14px;
+          cursor: pointer;
+          padding: 6px 12px;
+          border-radius: 20px;
+          transition: background-color 0.2s;
+        }
+
+        .user-info-compact:hover {
+          background-color: #333;
         }
 
         .department-badge {
@@ -637,6 +852,37 @@ const FacultyDashboard = () => {
           border-radius: 20px;
           font-size: 12px;
           font-weight: 500;
+        }
+
+        /* Profile icon styles */
+        .profile-icon {
+          width: 32px;
+          height: 32px;
+          border-radius: 50%;
+          overflow: hidden;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          margin-left: 8px;
+          border: 2px solid #ff4f5a44;
+        }
+
+        .avatar-mini {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+        }
+
+        .avatar-placeholder-mini {
+          width: 100%;
+          height: 100%;
+          background: linear-gradient(135deg, #ff4f5a33 0%, #80002033 100%);
+          color: #ff4f5a;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-weight: 600;
+          font-size: 14px;
         }
 
         .content-area {
@@ -692,39 +938,40 @@ const FacultyDashboard = () => {
         .featured-card h2 {
           font-size: 28px;
           font-weight: 700;
-          margin-bottom: 16px;
+          margin-bottom:margin-bottom: 8px;
         }
 
         .featured-card p {
           font-size: 16px;
-          margin-bottom: 8px;
+          margin-bottom: 12px;
+          max-width: 500px;
           opacity: 0.9;
         }
 
         .featured-btn {
-          padding: 10px 20px;
           background-color: rgba(255, 255, 255, 0.2);
-          border: 1px solid rgba(255, 255, 255, 0.3);
-          border-radius: 8px;
-          color: white;
+          color: #fff;
+          border: none;
+          padding: 10px 20px;
+          border-radius: 50px;
           font-weight: 500;
           cursor: pointer;
           transition: background-color 0.2s;
+          display: flex;
+          align-items: center;
+          gap: 8px;
         }
 
         .featured-btn:hover {
           background-color: rgba(255, 255, 255, 0.3);
         }
 
-        /* Sections */
+        /* Section Headers */
         .section {
-          background: #212121;
-          padding: 20px;
-          border-radius: 12px;
-          display: flex;
-          flex-direction: column;
           margin-bottom: 24px;
-          min-height: 200px;
+          background-color: #222;
+          border-radius: 12px;
+          padding: 24px;
         }
 
         .section-header {
@@ -740,108 +987,76 @@ const FacultyDashboard = () => {
         }
 
         .view-all-btn {
-          background: none;
           border: none;
+          background: none;
           color: #ff4f5a;
           font-size: 14px;
           cursor: pointer;
+          transition: opacity 0.2s;
         }
 
-        /* Container wrappers */
-        .subjects-container,
-        .groups-container {
-          overflow-y: auto;
-          max-height: 500px;
-          padding-right: 8px;
-          flex: 1;
+        .view-all-btn:hover {
+          opacity: 0.8;
         }
 
         /* Subjects Grid */
-        .subjects-grid,
-        .groups-grid {
+        .subjects-grid, .groups-grid {
           display: grid;
-          grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+          grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
           gap: 16px;
-          padding-bottom: 8px;
         }
 
-        @media (min-width: 1200px) {
-          .subjects-grid,
-          .groups-grid {
-            grid-template-columns: repeat(3, 1fr);
-          }
-        }
-
-        .subject-card,
-        .group-card {
-          background: #2a2a2a;
+        .subject-card, .group-card {
+          background-color: #333;
+          border-radius: 12px;
           padding: 16px;
-          border-radius: 10px;
-          transition: transform 0.2s, background-color 0.2s;
           cursor: pointer;
-          overflow: hidden;
+          transition: transform 0.2s, box-shadow 0.2s;
         }
 
-        .subject-card:hover,
-        .group-card:hover {
+        .subject-card:hover, .group-card:hover {
           transform: translateY(-3px);
-          background-color: #333;
+          box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
         }
 
-        .subject-card.expanded,
-        .group-card.expanded {
-          background-color: #333;
-          grid-column: 1 / -1;
-        }
-
-        .subject-content,
-        .group-content {
-          overflow: hidden;
-        }
-
-        .subject-header,
-        .group-header {
+        .subject-header, .group-header {
           display: flex;
           justify-content: space-between;
           align-items: center;
-          margin-bottom: 6px;
+          margin-bottom: 8px;
         }
 
-        .status-indicator {
-          width: 10px;
-          height: 10px;
-          border-radius: 50%;
-          margin-left: 6px;
-        }
-
-        .status-indicator.active {
-          background-color: #22c55e;
-        }
-
-        .status-indicator.inactive {
-          background-color: #ffffff;
-        }
-
-        .subject-card h3,
-        .group-card h3 {
-          font-size: 16px;
+        .subject-header h3, .group-header h3 {
+          font-size: 18px;
           font-weight: 500;
         }
 
-        .subject-info,
-        .group-info {
-          font-size: 14px;
+        .status-indicator {
+          width: 12px;
+          height: 12px;
+          border-radius: 50%;
+        }
+
+        .status-indicator.active {
+          background-color: #4caf50;
+        }
+
+        .status-indicator.inactive {
+          background-color: #999;
+        }
+
+        .subject-info, .group-info {
           color: #ccc;
-          margin-bottom: 10px;
+          font-size: 14px;
+          margin-bottom: 16px;
           display: -webkit-box;
           -webkit-line-clamp: 2;
           -webkit-box-orient: vertical;
           overflow: hidden;
         }
 
-        .subject-details,
-        .group-details {
-          margin-top: 16px;
+        /* Subject & Group Details */
+        .subject-details, .group-details {
           border-top: 1px solid #444;
           padding-top: 16px;
           overflow: hidden;
@@ -850,224 +1065,191 @@ const FacultyDashboard = () => {
         .detail-item {
           display: flex;
           justify-content: space-between;
+          align-items: center;
           margin-bottom: 8px;
         }
 
         .detail-label {
-          color: #999;
-          font-size: 13px;
+          color: #aaa;
+          font-size: 14px;
         }
 
         .detail-value {
-          font-size: 13px;
-          font-weight: 500;
+          font-size: 14px;
         }
 
         .status-badge {
-          padding: 2px 8px;
-          border-radius: 12px;
+          padding: 4px 10px;
+          border-radius: 20px;
           font-size: 12px;
           border: none;
           cursor: pointer;
         }
 
         .status-badge.active {
-          background: #22c55e;
-          color: white;
+          background-color: #4caf5033;
+          color: #4caf50;
         }
 
         .status-badge.inactive {
-          background: #ffffff;
-          color: #333;
+          background-color: #99999933;
+          color: #999;
         }
 
         .button-row {
           display: flex;
           gap: 8px;
-          margin-top: 12px;
+          margin-top: 16px;
+        }
+
+        .manage-btn, .remove-btn {
+          padding: 8px 16px;
+          border-radius: 6px;
+          font-size: 14px;
+          border: none;
+          cursor: pointer;
+          flex: 1;
+          transition: background-color 0.2s;
         }
 
         .manage-btn {
-          background: #ff4f5a;
-          color: white;
-          border: none;
-          padding: 8px 16px;
-          border-radius: 6px;
-          cursor: pointer;
-          font-size: 14px;
-          transition: background-color 0.2s;
-          flex: 1;
+          background-color: #ff4f5a22;
+          color: #ff4f5a;
         }
 
         .manage-btn:hover {
-          background: #ff3a47;
+          background-color: #ff4f5a33;
         }
 
         .remove-btn {
-          background: #444;
-          color: white;
-          border: none;
-          padding: 8px 16px;
-          border-radius: 6px;
-          cursor: pointer;
-          font-size: 14px;
-          transition: background-color 0.2s;
-          flex: 1;
+          background-color: #33333333;
+          color: #ccc;
         }
 
         .remove-btn:hover {
-          background: #666;
-        }
-
-        .empty-state {
-          grid-column: 1 / -1;
-          background-color: #2a2a2a;
-          padding: 40px;
-          border-radius: 10px;
-          text-align: center;
-          color: #999;
+          background-color: #44444444;
         }
 
         /* Notice Board */
         .notices-section {
-          height: auto;
-          max-height: 100%;
+          height: 100%;
         }
 
         .notice-board {
-          background: #2a2a2a;
-          border-radius: 10px;
-          max-height: 600px;
-          overflow-y: auto;
+          display: flex;
+          flex-direction: column;
+          gap: 16px;
         }
 
         .notice-item {
-          padding: 20px;
-          border-bottom: 1px solid #333;
-        }
-
-        .notice-item:last-child {
-          border-bottom: none;
+          background-color: #333;
+          border-radius: 12px;
+          padding: 16px;
+          border-left: 4px solid #ff4f5a;
         }
 
         .notice-date {
+          color: #aaa;
           font-size: 12px;
-          color: #999;
-          margin-bottom: 6px;
+          margin-bottom: 8px;
         }
 
         .notice-title {
           font-size: 16px;
-          font-weight: 600;
+          font-weight: 500;
           margin-bottom: 8px;
-          color: #ff4f5a;
         }
 
         .notice-text {
-          font-size: 14px;
           color: #ccc;
-          line-height: 1.4;
+          font-size: 14px;
         }
 
         /* Modal */
         .overlay {
           position: fixed;
-          top: 0;
+          top: 
           left: 0;
           right: 0;
           bottom: 0;
-          background: rgba(0, 0, 0, 0.8);
-          backdrop-filter: blur(4px);
-          display: flex;
-          align-items: center;
-          justify-content: center;
+          background-color: rgba(0, 0, 0, 0.7);
           z-index: 100;
+          backdrop-filter: blur(5px);
         }
 
         .modal-container {
-          background: #2a2a2a;
-          padding: 24px;
-          border-radius: 12px;
-          width: 100%;
-          max-width: 400px;
-          z-index: 101;
           position: fixed;
-          top: 30%;
-          left: 35%;
+          top: 80;
+          left:450px;
           transform: translate(-50%, -50%);
-          box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
-          border: 1px solid #ff4f5a33;
+          background-color: #222;
+          border-radius: 16px;
+          padding: 24px;
+          z-index: 101;
+          width: 90%;
+          max-width: 500px;
           max-height: 90vh;
           overflow-y: auto;
         }
 
         .modal-heading {
           margin-bottom: 16px;
-          text-align: center;
           color: #fff;
-          font-size: 18px;
+          font-size: 20px;
+          text-align: center;
         }
 
         .input-field {
           width: 100%;
-          padding: 12px;
-          border: 1px solid #ff4f5a;
-          background-color: #333;
+          padding: 12px 16px;
           border-radius: 8px;
+          border: 1px solid #444;
+          background-color: #333;
+          color: #fff;
           margin-bottom: 16px;
           font-size: 14px;
-          color: #fff;
-          transition: border-color 0.2s;
         }
 
         .input-field:focus {
           outline: none;
           border-color: #ff4f5a;
-          box-shadow: 0 0 0 2px #ff4f5a33;
-        }
-        .input-field::placeholder {
-          color: #999;
         }
 
         .button-container {
           display: flex;
+          justify-content: flex-end;
           gap: 12px;
-          justify-content: space-between;
+          margin-top: 24px;
+        }
+
+        .confirm-button, .cancel-button {
+          padding: 10px 20px;
+          border-radius: 8px;
+          border: none;
+          font-size: 14px;
+          cursor: pointer;
+          transition: background-color 0.2s;
         }
 
         .confirm-button {
-          flex: 1;
-          padding: 12px;
-          background: #ff4f5a;
-          color: white;
-          border: none;
-          border-radius: 8px;
-          cursor: pointer;
-          font-weight: 500;
-          transition: background-color 0.2s;
+          background-color: #ff4f5a;
+          color: #fff;
         }
 
         .confirm-button:hover {
-          background: #ff3a47;
+          background-color: #e23e49;
         }
 
         .cancel-button {
-          flex: 1;
-          padding: 12px;
-          background: #444;
-          color: white;
-          border: none;
-          border-radius: 8px;
-          cursor: pointer;
-          font-weight: 500;
-          transition: background-color 0.2s;
+          background-color: #444;
+          color: #fff;
         }
 
         .cancel-button:hover {
-          background: #555;
+          background-color: #555;
         }
 
-        /* File upload styles */
+        /* File Upload */
         .file-upload-container {
           margin-bottom: 16px;
         }
@@ -1082,41 +1264,38 @@ const FacultyDashboard = () => {
         }
 
         .custom-file-upload {
-          border: 1px dashed #ff4f5a;
-          border-radius: 8px;
-          padding: 16px;
-          text-align: center;
-          background-color: #333;
-          color: #ccc;
-          transition: all 0.2s;
           display: flex;
-          flex-direction: column;
           align-items: center;
-          gap: 8px;
+          gap: 10px;
+          padding: 12px 16px;
+          border-radius: 8px;
+          border: 1px dashed #555;
+          background-color: #2a2a2a;
+          transition: border-color 0.2s, background-color 0.2s;
         }
 
         .custom-file-upload:hover {
-          background-color: #3a3a3a;
-          border-color: #ff3a47;
+          border-color: #ff4f5a;
+          background-color: #2f2f2f;
         }
 
         .upload-icon {
-          font-size: 24px;
-          margin-bottom: 8px;
+          font-size: 18px;
         }
 
         .upload-text {
+          color: #ccc;
           font-size: 14px;
         }
 
         .file-selected {
-          margin-top: 12px;
-          background: #333;
-          border-radius: 8px;
-          padding: 10px;
           display: flex;
           justify-content: space-between;
           align-items: center;
+          padding: 10px 16px;
+          margin-top: 8px;
+          background-color: #2f2f2f;
+          border-radius: 8px;
         }
 
         .file-info {
@@ -1125,263 +1304,95 @@ const FacultyDashboard = () => {
         }
 
         .file-name {
-          font-size: 14px;
+          font-size: 13px;
           color: #fff;
-          margin-bottom: 4px;
-          white-space: nowrap;
-          overflow: hidden;
-          text-overflow: ellipsis;
-          max-width: 250px;
         }
 
         .file-size {
-          font-size: 12px;
-          color: #999;
+          font-size: 11px;
+          color: #aaa;
+          margin-top: 2px;
         }
 
         .remove-file-btn {
           background: none;
           border: none;
-          color: #ff4f5a;
+          color: #999;
           cursor: pointer;
-          font-size: 16px;
-          padding: 4px 8px;
-          border-radius: 4px;
-          transition: background-color 0.2s;
+          font-size: 18px;
+          transition: color 0.2s;
         }
 
         .remove-file-btn:hover {
-          background-color: #3a3a3a;
+          color: #ff4f5a;
         }
 
         .file-format-hint {
           font-size: 12px;
-          color: #999;
-          margin-top: 8px;
-          text-align: center;
+          color: #888;
+          margin-top: 6px;
+          padding-left: 2px;
         }
 
-        /* Scrollbar styles */
-        ::-webkit-scrollbar {
-          width: 8px;
-          height: 8px;
-        }
-
-        ::-webkit-scrollbar-track {
-          background: #2a2a2a;
-          border-radius: 4px;
-        }
-
-        ::-webkit-scrollbar-thumb {
-          background: #444;
-          border-radius: 4px;
-        }
-
-        ::-webkit-scrollbar-thumb:hover {
-          background: #555;
-        }
-
-        /* Responsive Media Queries */
-        @media (max-width: 1024px) {
-          .dashboard-layout {
-            flex-direction: column;
-          }
-
-          .right-container {
-            max-width: 100%;
-          }
-
-          .featured-card {
-            padding: 30px;
-          }
-
-          .featured-card h2 {
-            font-size: 24px;
-          }
-        }
-
-        @media (max-width: 768px) {
-          .subjects-grid,
-          .groups-grid {
-            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-          }
-
-          .content-area {
-            padding: 16px;
-          }
-
-          .featured-card {
-            padding: 24px;
-          }
-
-          .featured-buttons {
-            flex-direction: column;
-            align-items: stretch;
-          }
-
-          .featured-btn {
-            width: 100%;
-          }
-        }
-
-        @media (max-width: 480px) {
-          .subjects-grid,
-          .groups-grid {
-            grid-template-columns: 1fr;
-          }
-
-          .content-area {
-            padding: 12px;
-          }
-
-          .dashboard-layout {
-            gap: 16px;
-          }
-
-          .section {
-            padding: 16px;
-          }
-
-          .featured-card h2 {
-            font-size: 20px;
-          }
-
-          .featured-card {
-            padding: 20px;
-          }
-
-          .button-container {
-            flex-direction: column;
-          }
-        }
-
-        /* Loading animations */
-        @keyframes pulse {
-          0% {
-            opacity: 0.6;
-          }
-          50% {
-            opacity: 1;
-          }
-          100% {
-            opacity: 0.6;
-          }
-        }
-
-        .loading {
-          animation: pulse 1.5s infinite ease-in-out;
-        }
-
-        /* Tooltip styles */
-        .tooltip {
-          position: relative;
-          display: inline-block;
-        }
-
-        .tooltip .tooltip-text {
-          visibility: hidden;
-          background-color: #444;
-          color: #fff;
-          text-align: center;
-          border-radius: 6px;
-          padding: 6px 12px;
-          position: absolute;
-          z-index: 1;
-          bottom: 125%;
-          left: 50%;
-          transform: translateX(-50%);
-          opacity: 0;
-          transition: opacity 0.3s;
-          font-size: 12px;
-          white-space: nowrap;
-        }
-
-        .tooltip .tooltip-text::after {
-          content: "";
-          position: absolute;
-          top: 100%;
-          left: 50%;
-          margin-left: -5px;
-          border-width: 5px;
-          border-style: solid;
-          border-color: #444 transparent transparent transparent;
-        }
-
-        .tooltip:hover .tooltip-text {
-          visibility: visible;
-          opacity: 1;
-        }
-
-        /* Badge styles */
-        .badge {
-          display: inline-block;
-          padding: 2px 8px;
-          border-radius: 12px;
-          font-size: 12px;
-          font-weight: 500;
-        }
-
-        .badge-primary {
-          background-color: #ff4f5a33;
-          color: #ff4f5a;
-        }
-
-        .badge-success {
-          background-color: #22c55e33;
-          color: #22c55e;
-        }
-
-        .badge-warning {
-          background-color: #f59e0b33;
-          color: #f59e0b;
-        }
-
-        /* Empty state animations */
+        /* Empty State */
         .empty-state {
-          animation: fadeIn 0.5s ease-in-out;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          height: 150px;
+          background-color: #333;
+          border-radius: 12px;
+          color: #777;
+          font-size: 14px;
         }
 
-        @keyframes fadeIn {
-          from {
-            opacity: 0;
-            transform: translateY(10px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
+        /* Plan Preview */
+        .plan-preview-container {
+          margin-top: 20px;
+          margin-bottom: 20px;
+          border-radius: 8px;
+          background-color: #2a2a2a;
+          padding: 16px;
+          border: 1px solid #444;
         }
 
-        /* Card hover effects */
-        .subject-card,
-        .group-card {
-          position: relative;
-          overflow: hidden;
+        .preview-heading {
+          font-size: 16px;
+          margin-bottom: 12px;
+          color: #ccc;
         }
 
-        .subject-card::after,
-        .group-card::after {
-          content: "";
-          position: absolute;
-          top: 0;
-          left: 0;
+        .plan-table-wrapper {
+          max-height: 200px;
+          overflow-y: auto;
+          margin-bottom: 10px;
+        }
+
+        .plan-table {
           width: 100%;
-          height: 100%;
-          background: linear-gradient(
-            135deg,
-            transparent 0%,
-            rgba(255, 79, 90, 0.1) 100%
-          );
-          opacity: 0;
-          transition: opacity 0.3s;
-          pointer-events: none;
+          border-collapse: collapse;
         }
 
-        .subject-card:hover::after,
-        .group-card:hover::after {
-          opacity: 1;
+        .plan-table th,
+        .plan-table td {
+          padding: 8px 12px;
+          text-align: left;
+          border-bottom: 1px solid #444;
         }
-      `}</style>
+
+        .plan-table th {
+          background-color: #333;
+          color: #ccc;
+          font-weight: 500;
+          position: sticky;
+          top: 0;
+        }
+
+        .plan-table tbody tr:hover {
+          background-color: #333;
+        }
+      `}
+      </style>
     </div>
   );
 };
