@@ -78,9 +78,9 @@ const Signup = () => {
       delete validationErrors.name;
     }
 
-    if (field === "enrollment" && value && !/^[0-9]{11}$/.test(value)) {
+    if (field === "enrollment" && value && !/^\d{4}$|^\d{11}$/.test(value)) {
       validationErrors.enrollment =
-        "Enrollment number must be exactly 11 digits.";
+        "Enrollment number must be either 6 digits (faculty) or 11 digits (student).";
     } else {
       delete validationErrors.enrollment;
     }
@@ -155,36 +155,43 @@ const Signup = () => {
 
   // Handle Signup API Call
   const handleSignup = async () => {
-    if (Object.keys(errors).length > 0) {
-      toast.error("Please fix the errors before submitting.");
-      return;
+  if (Object.keys(errors).length > 0) {
+    toast.error("Please fix the errors before submitting.");
+    return;
+  }
+
+  if (password !== confirmPassword) {
+    toast.error("Passwords do not match!");
+    return;
+  }
+
+  try {
+    const response = await fetch("http://localhost:5000/api/auth/signup", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        name,
+        enrollment,
+        password,
+      }),
+    });
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      throw new Error(result.message || "Signup failed");
     }
 
-    if (password !== confirmPassword) {
-      toast.error("Passwords do not match!");
-      return;
-    }
+    toast.success("✅ Signup successful! Redirecting to login... 🎉");
+    setTimeout(() => navigate("/login"), 1500);
+  } catch (error) {
+    console.error("❌ Error:", error.message);
+    toast.error(error.message || "Signup failed. Please try again.");
+  }
+};
 
-    try {
-      const { data, error } = await supabase.from("users").insert([
-        {
-          name,
-          enrollment,
-          password, // Consider hashing password before inserting
-        },
-      ]);
-
-      if (error) {
-        throw error;
-      }
-
-      toast.success("✅ Signup successful! Redirecting to login... 🎉");
-      setTimeout(() => navigate("/login"), 1500); // Redirect to login after 1.5 sec
-    } catch (error) {
-      console.error("❌ Error:", error.message);
-      toast.error("Signup failed. Please try again.");
-    }
-  };
 
   // Render the appropriate input field based on the step
   const renderInputField = () => {

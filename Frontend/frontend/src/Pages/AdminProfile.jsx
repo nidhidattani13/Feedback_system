@@ -4,12 +4,14 @@ import "../styles/AdminProfile.css";
 
 const AdminProfile = ({ isOpen, onClose, initialData }) => {
   const [profileData, setProfileData] = useState({
-    name: initialData?.name || "Admin User",
-    position: initialData?.position || "System Administrator",
-    department: initialData?.department || "IT Department",
-    email: initialData?.email || "admin@example.com",
-    phone: initialData?.phone || "+1 (555) 123-4567",
-    avatar: initialData?.avatar || null,
+    id: "",
+    name: "",
+    position: "",
+    department: "",
+    email: "",
+    phone: "",
+    avatar: null,
+    password:"",
   });
 
   const [passwordData, setPasswordData] = useState({
@@ -22,6 +24,33 @@ const AdminProfile = ({ isOpen, onClose, initialData }) => {
   const [isChangingPassword, setIsChangingPassword] = useState(false);
   const [passwordError, setPasswordError] = useState("");
   const [saveSuccess, setSaveSuccess] = useState(false);
+
+  // ✅ Fetch real admin data on modal open
+  useEffect(() => {
+    const fetchAdminProfile = async () => {
+      const adminId = initialData?.id || "d0d65356-e235-4321-afb1-c6d3c4e8e34c"; // fallback
+      try {
+        const response = await fetch(`http://localhost:5000/api/admin/${adminId}`);
+        const data = await response.json();
+        console.log("Fetched Admin Data:", data);
+        setProfileData({
+          id: data.id,
+          name: data.name,
+          position: data.position,
+          department: data.department,
+          email: data.email,
+          phone: data.phone,
+          avatar: data.avatar_url || null,
+        });
+      } catch (error) {
+        console.error("Failed to fetch admin data:", error.message);
+      }
+    };
+
+    if (isOpen) {
+      fetchAdminProfile();
+    }
+  }, [isOpen, initialData]);
 
   // Reset states when modal closes
   useEffect(() => {
@@ -40,46 +69,94 @@ const AdminProfile = ({ isOpen, onClose, initialData }) => {
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setProfileData({
-      ...profileData,
+    setProfileData((prev) => ({
+      ...prev,
       [name]: value,
-    });
+    }));
   };
 
   const handlePasswordChange = (e) => {
     const { name, value } = e.target;
-    setPasswordData({
-      ...passwordData,
+    setPasswordData((prev) => ({
+      ...prev,
       [name]: value,
-    });
+    }));
   };
 
-  const handleSaveProfile = () => {
-    // Here you would typically have API call to update the profile
-    // For now we'll just simulate a successful save
-    setTimeout(() => {
+  const handleSaveProfile = async () => {
+    // Basic validation
+    if (!profileData.name || !profileData.position || !profileData.department || !profileData.email) {
+      alert("Name, Position, Department, and Email are required.");
+      return;
+    }
+    
+    // If creating new profile, check for password
+    if (!profileData.id && !profileData.password) {
+      alert("Password is required for new admin profiles.");
+      return;
+    }
+  
+    try {
+      // Prepare data for submission (convert avatar URL correctly)
+      const submissionData = {
+        ...profileData,
+        avatar_url: profileData.avatar
+      };
+      delete submissionData.avatar; // Remove the avatar field
+  
+      let response;
+      
+      if (profileData.id) {
+        // Update existing profile
+        response = await fetch(`http://localhost:5000/api/admin/${profileData.id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(submissionData),
+        });
+      } else {
+        // Create new profile
+        response = await fetch(`http://localhost:5000/api/admin`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(submissionData),
+        });
+      }
+  
+      const result = await response.json();
+  
+      if (!response.ok) throw new Error(result.message);
+  
+      // Update local state with returned ID if it was a new profile
+      if (result.profile && result.profile.id) {
+        setProfileData(prev => ({
+          ...prev,
+          id: result.profile.id
+        }));
+      }
+      
       setIsEditing(false);
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3000);
-    }, 800);
+    } catch (error) {
+      alert("Failed to save profile: " + error.message);
+      console.error(error);
+    }
   };
 
   const handleChangePassword = () => {
     setPasswordError("");
-    
-    // Validate passwords
+
     if (passwordData.newPassword !== passwordData.confirmPassword) {
       setPasswordError("New passwords don't match");
       return;
     }
-    
+
     if (passwordData.newPassword.length < 8) {
       setPasswordError("Password must be at least 8 characters");
       return;
     }
-    
-    // Here you would typically have API call to update the password
-    // For now we'll just simulate a successful update
+
+    // Simulate success
     setTimeout(() => {
       setIsChangingPassword(false);
       setPasswordData({
@@ -95,16 +172,15 @@ const AdminProfile = ({ isOpen, onClose, initialData }) => {
   const handleAvatarUpload = (e) => {
     const file = e.target.files[0];
     if (file) {
-      // For demo purposes we'll just use URL.createObjectURL
-      // In a real app, you would upload to server
-      setProfileData({
-        ...profileData,
+      setProfileData((prev) => ({
+        ...prev,
         avatar: URL.createObjectURL(file),
-      });
+      }));
     }
   };
 
   if (!isOpen) return null;
+
 
   return (
     <AnimatePresence>
@@ -204,6 +280,7 @@ const AdminProfile = ({ isOpen, onClose, initialData }) => {
                             name="position"
                             value={profileData.position}
                             onChange={handleInputChange}
+                            required
                           />
                         </div>
                         <div className="form-group">
@@ -213,6 +290,7 @@ const AdminProfile = ({ isOpen, onClose, initialData }) => {
                             name="department"
                             value={profileData.department}
                             onChange={handleInputChange}
+                            required
                           />
                         </div>
                         <div className="form-group">
@@ -233,6 +311,20 @@ const AdminProfile = ({ isOpen, onClose, initialData }) => {
                             onChange={handleInputChange}
                           />
                         </div>
+
+                        {/* Add the password field here */}
+    {isEditing && !profileData.id && (
+      <div className="form-group">
+        <label>Password</label>
+        <input
+          type="password"
+          name="password"
+          value={profileData.password}
+          onChange={handleInputChange}
+          required
+        />
+      </div>
+    )}
                         
                         <div className="button-row">
                           <button 

@@ -4,6 +4,8 @@ import cors from 'cors';
 // import authRoutes from './routes/auth'; // ✅ Correct
 import { createClient } from '@supabase/supabase-js';
 import authRoutes from './routes/auth.js';
+import adminRoutes from './routes/admin.js'; 
+import facultyRoutes from './routes/faculty.js'; // Import faculty routes
 
 // Load environment variables
 dotenv.config();
@@ -50,6 +52,11 @@ app.get("/test-supabase", async (req, res) => {
 
 // Routes for Authentication (Signup, Login)
 app.use("/api/auth", authRoutes);
+// Routes for Admin Profile Management
+app.use("/api/admin", adminRoutes);
+// Routes for Faculty Management
+app.use("/api/faculty", facultyRoutes);
+
 
 // Server configuration
 const PORT = process.env.PORT || 5000;

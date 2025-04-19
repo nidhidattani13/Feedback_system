@@ -9,46 +9,46 @@ const Login = () => {
   const [isLoading, setIsLoading] = useState(false);
 
   const handleLogin = async (e) => {
-    e.preventDefault();
-    setIsLoading(true);
+  e.preventDefault();
+  setIsLoading(true);
 
-    try {
-      // Query the users table to check credentials
-      const { data, error } = await supabase
-        .from("users")
-        .select("*")
-        .eq("enrollment", enrollment)
-        .eq("password", password) // Note: In production, you should use proper password hashing
-        .single();
+  try {
+    const response = await fetch("http://localhost:5000/api/auth/login", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ enrollment, password }),
+    });
 
-      if (error) {
-        throw error;
-      }
+    const result = await response.json();
 
-      if (data) {
-        // Store user info in localStorage
-        localStorage.setItem("token", "user-logged-in"); // Simple token example
-        localStorage.setItem("userData", JSON.stringify(data));
-        alert("Login Successful!");
-
-        // Redirect based on enrollment number length
-        if (/^\d{11}$/.test(enrollment)) {
-          navigate("/student-dashboard");
-        } else if (/^\d{4}$/.test(enrollment)) {
-          navigate("/faculty-dashboard");
-        } else {
-          navigate("/admin-dashboard");
-        }
-      } else {
-        alert("Invalid credentials. Please try again.");
-      }
-    } catch (error) {
-      console.error("Login error:", error.message);
-      alert("Login failed: " + error.message);
-    } finally {
-      setIsLoading(false);
+    if (!response.ok) {
+      throw new Error(result.message || "Login failed");
     }
-  };
+
+    // Store user data locally
+    localStorage.setItem("token", "user-logged-in");
+    localStorage.setItem("userData", JSON.stringify(result.user));
+
+    alert("Login successful!");
+
+    // Redirect based on enrollment type
+    if (/^\d{11}$/.test(enrollment)) {
+      navigate("/student-dashboard");
+    } else if (/^\d{6}$/.test(enrollment)) {
+      navigate("/faculty-dashboard");
+    } else {
+      navigate("/admin-dashboard");
+    }
+  } catch (error) {
+    console.error("Login error:", error.message);
+    alert("Login failed: " + error.message);
+  } finally {
+    setIsLoading(false);
+  }
+};
+
 
   return (
     <div className="login-page">
