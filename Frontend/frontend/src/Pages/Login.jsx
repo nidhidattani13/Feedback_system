@@ -1,12 +1,87 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import supabase from "../../../../Backend/supabaseClient";
+import "../styles/Login.css";
 
 const Login = () => {
   const navigate = useNavigate();
   const [enrollment, setEnrollment] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
+
+  // Check for authentication state on component mount
+  useEffect(() => {
+    const checkSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (session) {
+        // User is already authenticated
+        handleUserData(session.user);
+      }
+    };
+    
+    checkSession();
+    
+    // Set up auth state change listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (event === 'SIGNED_IN' && session) {
+          handleUserData(session.user);
+        }
+      }
+    );
+    
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [navigate]);
+  
+  // Process user data and redirect after successful authentication
+  const handleUserData = async (user) => {
+    try {
+      // First check if user exists in our database
+      const { data: existingUser, error: fetchError } = await supabase
+        .from("users")
+        .select("*")
+        .eq("email", user.email)
+        .single();
+        
+      if (fetchError && fetchError.code !== 'PGRST116') {
+        // PGRST116 means no rows returned, other errors should be handled
+        console.error("Error fetching user:", fetchError);
+        return;
+      }
+      
+      if (existingUser) {
+        // User exists, store data and redirect
+        localStorage.setItem("token", user.id);
+        localStorage.setItem("userData", JSON.stringify(existingUser));
+        
+        // Redirect based on enrollment number pattern
+        if (/^\d{11}$/.test(existingUser.enrollment)) {
+          navigate("/student-dashboard");
+        } else if (/^\d{4}$/.test(existingUser.enrollment)) {
+          navigate("/faculty-dashboard");
+        } else {
+          navigate("/admin-dashboard");
+        }
+      } else {
+        // New user, redirect to profile completion page
+        localStorage.setItem("token", user.id);
+        localStorage.setItem("tempUserData", JSON.stringify({
+          email: user.email,
+          name: user.user_metadata?.full_name || '',
+        }));
+        navigate("/complete-profile");
+      }
+    } catch (error) {
+      console.error("Error processing user data:", error.message);
+      alert("Authentication successful but error processing user data: " + error.message);
+    }
+  };
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -50,13 +125,44 @@ const Login = () => {
     }
   };
 
+  const handleGoogleLogin = async () => {
+    setGoogleLoading(true);
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: window.location.origin + '/auth/callback',
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'consent',
+          }
+        }
+      });
+      
+      if (error) {
+        throw error;
+      }
+      
+      // Note: The redirect happens automatically, and the auth state change
+      // listener will handle the post-authentication logic
+    } catch (error) {
+      console.error("Google login error:", error.message);
+      alert("Google login failed: " + error.message);
+      setGoogleLoading(false);
+    }
+  };
+
   return (
     <div className="login-page">
       <div className="login-container">
-        {/* Left panel with background image and tagline */}
+        {/* Left panel with enhanced symbiote effect */}
         <div className="left-panel">
+          <div className="symbiote-mask"></div>
           <div className="logo">PHINEAS</div>
-
+          <div className="tagline">
+            <h2>Gateway to Campus Excellence</h2>
+            <p>Sign in to access your personalized academic portal</p>
+          </div>
           <div className="slide-indicators">
             <span className="indicator"></span>
             <span className="indicator"></span>
@@ -64,10 +170,10 @@ const Login = () => {
           </div>
         </div>
 
-        {/* Right panel with login form */}
+        {/* Right panel preserved as in the screenshot */}
         <div className="right-panel">
           <div className="form-container">
-            <h1>Sign in to your Account</h1>
+            <h1>Welcome Back</h1>
             <p className="account-link">
               Don't have an account?{" "}
               <span onClick={() => navigate("/signup")}>
@@ -77,45 +183,94 @@ const Login = () => {
 
             <form onSubmit={handleLogin}>
               <div className="form-group">
-                <input
-                  type="text"
-                  placeholder="Enrollment Number"
-                  className="input-field"
-                  value={enrollment}
-                  onChange={(e) => setEnrollment(e.target.value)}
-                  required
-                />
+                <label htmlFor="enrollment">Enrollment Number</label>
+                <div className="input-wrapper">
+                  <input
+                    id="enrollment"
+                    type="text"
+                    placeholder="Enter your enrollment number"
+                    className="input-field"
+                    value={enrollment}
+                    onChange={(e) => setEnrollment(e.target.value)}
+                    required
+                  />
+                  <span className="input-icon">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M20 21V19C20 16.7909 18.2091 15 16 15H8C5.79086 15 4 16.7909 4 19V21" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                      <path d="M12 11C14.2091 11 16 9.20914 16 7C16 4.79086 14.2091 3 12 3C9.79086 3 8 4.79086 8 7C8 9.20914 9.79086 11 12 11Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                    </svg>
+                  </span>
+                </div>
               </div>
+              
               <div className="form-group">
-                <input
-                  type="password"
-                  placeholder="Password"
-                  className="input-field"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                />
+                <label htmlFor="password">Password</label>
+                <div className="input-wrapper">
+                  <input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    placeholder="Enter your password"
+                    className="input-field"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                  />
+                  <span 
+                    className="input-icon clickable" 
+                    onClick={() => setShowPassword(!showPassword)}
+                  >
+                    {showPassword ? (
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M2 12C2 12 5 5 12 5C19 5 22 12 22 12C22 12 19 19 12 19C5 19 2 12 2 12Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                        <path d="M12 15C13.6569 15 15 13.6569 15 12C15 10.3431 13.6569 9 12 9C10.3431 9 9 10.3431 9 12C9 13.6569 10.3431 15 12 15Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                        <path d="M3 3L21 21" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                      </svg>
+                    ) : (
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M2 12C2 12 5 5 12 5C19 5 22 12 22 12C22 12 19 19 12 19C5 19 2 12 2 12Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                        <path d="M12 15C13.6569 15 15 13.6569 15 12C15 10.3431 13.6569 9 12 9C10.3431 9 9 10.3431 9 12C9 13.6569 10.3431 15 12 15Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                      </svg>
+                    )}
+                  </span>
+                </div>
               </div>
-              <p className="forgot-password">Forgot password?</p>
+              
+              <div className="forgot-password-row">
+                <div className="remember-me">
+                  <input 
+                    type="checkbox" 
+                    id="remember"
+                    checked={rememberMe}
+                    onChange={() => setRememberMe(!rememberMe)}
+                  />
+                  <label htmlFor="remember">Remember me</label>
+                </div>
+                <p className="forgot-password">Forgot password?</p>
+              </div>
+              
               <button
                 type="submit"
                 className="login-button"
                 disabled={isLoading}
               >
-                {isLoading ? "Loading..." : "Continue"}
+                {isLoading ? "Loading..." : "Sign In"}
               </button>
             </form>
 
             <div className="separator">
-              <span>Or sign in with</span>
+              <span>Or continue with</span>
             </div>
 
             <div className="social-logins">
-              <button className="google-login">
+              <button 
+                className="social-button google-login" 
+                onClick={handleGoogleLogin}
+                disabled={googleLoading}
+              >
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
-                  width="20"
-                  height="20"
+                  width="18"
+                  height="18"
                   viewBox="0 0 48 48"
                 >
                   <path
@@ -135,438 +290,12 @@ const Login = () => {
                     d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"
                   />
                 </svg>
-                <span>Dont Sign In With GOOGLE</span>
+                <span>{googleLoading ? "Loading..." : "Google"}</span>
               </button>
             </div>
           </div>
         </div>
       </div>
-
-      <style jsx>{`
-        /* Global styles */
-        * {
-          box-sizing: border-box;
-          margin: 0;
-          padding: 0;
-          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
-            Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
-        }
-
-        /* Login page container */
-        .login-page {
-          min-height: 100vh;
-          width: 100vw;
-          display: flex;
-          justify-content: center;
-          align-items: center;
-          background-color: #1a1a1a;
-          padding: 20px;
-        }
-
-        /* Main login container */
-        .login-container {
-          display: flex;
-          width: 100%;
-          max-width: 1000px;
-          height: 600px;
-          border-radius: 20px;
-          overflow: hidden;
-          box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-        }
-
-        /* Left panel */
-        .left-panel {
-          width: 50%;
-          background-image: url("/path/to/desert-image.jpg");
-          background-size: cover;
-          background-position: center;
-          position: relative;
-          display: flex;
-          flex-direction: column;
-          justify-content: space-between;
-          padding: 30px;
-          background: linear-gradient(135deg, #ff4f5a 0%, #800020 100%);
-          color: white;
-        }
-
-        /* Logo */
-        .logo {
-          font-size: 24px;
-          font-weight: bold;
-        }
-
-        /* Back to website link */
-        .back-to-website {
-          position: absolute;
-          top: 30px;
-          right: 30px;
-        }
-
-        .back-to-website a {
-          color: white;
-          text-decoration: none;
-          background-color: rgba(255, 255, 255, 0.2);
-          padding: 8px 16px;
-          border-radius: 20px;
-          font-size: 14px;
-          display: flex;
-          align-items: center;
-        }
-
-        .back-to-website a:after {
-          content: "→";
-          margin-left: 5px;
-        }
-
-        /* Tagline */
-        .tagline {
-          margin-bottom: 80px;
-        }
-
-        .tagline h2 {
-          font-size: 36px;
-          font-weight: 500;
-          line-height: 1.3;
-        }
-
-        /* Slide indicators */
-        .slide-indicators {
-          display: flex;
-          gap: 10px;
-          margin-bottom: 30px;
-        }
-
-        .indicator {
-          width: 30px;
-          height: 4px;
-          background-color: rgba(255, 255, 255, 0.3);
-          border-radius: 2px;
-        }
-
-        .indicator.active {
-          background-color: white;
-        }
-
-        /* Right panel */
-        .right-panel {
-          width: 50%;
-          background-color: #1a1a1a;
-          color: white;
-          padding: 40px;
-          display: flex;
-          flex-direction: column;
-          justify-content: center;
-        }
-
-        .form-container {
-          max-width: 400px;
-          margin: 0 auto;
-        }
-
-        /* Form header */
-        .form-container h1 {
-          font-size: 32px;
-          font-weight: 600;
-          margin-bottom: 15px;
-        }
-
-        .account-link {
-          margin-bottom: 30px;
-          color: #999;
-          font-size: 14px;
-        }
-
-        .account-link span {
-          color: #ff4f5a;
-          cursor: pointer;
-          text-decoration: none;
-        }
-
-        .account-link span:hover {
-          text-decoration: underline;
-        }
-
-        /* Form groups */
-        .form-group {
-          margin-bottom: 15px;
-        }
-
-        /* Input fields */
-        .input-field {
-          width: 100%;
-          padding: 14px;
-          border-radius: 8px;
-          border: 1px solid #333;
-          background-color: #2a2a2a;
-          color: white;
-          font-size: 16px;
-          transition: border-color 0.2s;
-        }
-
-        .input-field:focus {
-          outline: none;
-          border-color: #ff4f5a;
-          box-shadow: 0 0 0 2px rgba(255, 79, 90, 0.2);
-        }
-
-        .input-field::placeholder {
-          color: #999;
-        }
-
-        /* Forgot password */
-        .forgot-password {
-          font-size: 14px;
-          color: #ff4f5a;
-          text-align: right;
-          margin: 10px 0 25px;
-          cursor: pointer;
-        }
-
-        .forgot-password:hover {
-          text-decoration: underline;
-        }
-
-        /* Login button */
-        .login-button {
-          width: 100%;
-          padding: 14px;
-          border-radius: 8px;
-          border: none;
-          background-color: #ff4f5a;
-          color: white;
-          font-size: 16px;
-          font-weight: 500;
-          cursor: pointer;
-          transition: background-color 0.2s;
-        }
-
-        .login-button:hover {
-          background-color: #ff3a47;
-        }
-
-        .login-button:disabled {
-          opacity: 0.7;
-          cursor: not-allowed;
-        }
-
-        /* Separator */
-        .separator {
-          display: flex;
-          align-items: center;
-          margin: 25px 0;
-          color: #999;
-          font-size: 14px;
-        }
-
-        .separator:before,
-        .separator:after {
-          content: "";
-          flex: 1;
-          height: 1px;
-          background-color: #333;
-        }
-
-        .separator span {
-          padding: 0 15px;
-        }
-
-        /* Social logins */
-        .social-logins {
-          display: flex;
-          gap: 15px;
-        }
-
-        .google-login,
-        .apple-login {
-          flex: 1;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          gap: 10px;
-          padding: 12px;
-          border-radius: 8px;
-          font-size: 14px;
-          font-weight: 500;
-          cursor: pointer;
-          background-color: #2a2a2a;
-          border: 1px solid #333;
-          color: white;
-          transition: background-color 0.2s;
-        }
-
-        .google-login:hover,
-        .apple-login:hover {
-          background-color: #333;
-        }
-
-        /* Media Queries */
-        @media (max-width: 768px) {
-          .login-container {
-            flex-direction: column;
-            height: auto;
-          }
-
-          .left-panel,
-          .right-panel {
-            width: 100%;
-          }
-
-          .left-panel {
-            height: 250px;
-            padding: 20px;
-          }
-
-          .right-panel {
-            padding: 30px 20px;
-          }
-
-          .tagline {
-            margin-bottom: 40px;
-          }
-
-          .tagline h2 {
-            font-size: 28px;
-          }
-          /* Symbiote-inspired gradient for the left panel */
-          .left-panel {
-            width: 50%;
-            position: relative;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-            padding: 30px;
-            color: white;
-            overflow: hidden;
-            /* Remove the existing background */
-            background-image: none;
-            /* Base dark background */
-            background-color: #000000;
-          }
-
-          /* Symbiote effect container */
-          .left-panel::before {
-            content: "";
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            /* Create the main symbiote gradient base */
-            background: radial-gradient(
-              circle at 30% 40%,
-              #ff0000 0%,
-              #990000 30%,
-              #550000 50%,
-              #220000 70%,
-              #000000 100%
-            );
-            /* Add more organic looking texture */
-            background-blend-mode: multiply;
-            z-index: 1;
-          }
-
-          /* Animated symbiote tendrils */
-          .left-panel::after {
-            content: "";
-            position: absolute;
-            top: -50%;
-            left: -50%;
-            right: -50%;
-            bottom: -50%;
-            background: 
-    /* Multiple radial gradients for the organic, vein-like appearance */ radial-gradient(
-                circle at 70% 60%,
-                rgba(255, 0, 0, 0.8) 0%,
-                rgba(0, 0, 0, 0) 30%
-              ),
-              radial-gradient(
-                circle at 20% 30%,
-                rgba(255, 0, 0, 0.7) 0%,
-                rgba(0, 0, 0, 0) 20%
-              ),
-              radial-gradient(
-                circle at 90% 20%,
-                rgba(255, 0, 0, 0.7) 0%,
-                rgba(0, 0, 0, 0) 25%
-              ),
-              radial-gradient(
-                circle at 10% 80%,
-                rgba(255, 0, 0, 0.6) 0%,
-                rgba(0, 0, 0, 0) 30%
-              ),
-              /* Vertical wavy tendrils */
-                repeating-linear-gradient(
-                  0deg,
-                  transparent 0%,
-                  rgba(200, 0, 0, 0.2) 2%,
-                  transparent 3%,
-                  rgba(200, 0, 0, 0.1) 5%
-                ),
-              /* Horizontal wavy tendrils */
-                repeating-linear-gradient(
-                  90deg,
-                  transparent 0%,
-                  rgba(200, 0, 0, 0.2) 1%,
-                  transparent 2%,
-                  rgba(200, 0, 0, 0.1) 3%
-                );
-            /* Add animation for flowing effect */
-            animation: symbioteFlow 20s infinite alternate;
-            /* Use screen blend mode for glowing effect */
-            mix-blend-mode: screen;
-            opacity: 0.8;
-            z-index: 2;
-          }
-
-          /* Pulse effect for the symbiote */
-          @keyframes symbioteFlow {
-            0% {
-              transform: rotate(0deg) scale(1);
-            }
-            25% {
-              transform: rotate(5deg) scale(1.05);
-            }
-            50% {
-              transform: rotate(-2deg) scale(1.02);
-            }
-            75% {
-              transform: rotate(3deg) scale(1.07);
-            }
-            100% {
-              transform: rotate(-3deg) scale(1.03);
-            }
-          }
-
-          /* Ensure content stays above the background effects */
-          .logo,
-          .slide-indicators {
-            position: relative;
-            z-index: 3;
-          }
-
-          /* Add glow effect to the logo */
-          .logo {
-            font-size: 24px;
-            font-weight: bold;
-            text-shadow: 0 0 10px rgba(255, 0, 0, 0.7);
-            letter-spacing: 1px;
-          }
-
-          /* Style the indicators to match symbiote theme */
-          .indicator {
-            width: 30px;
-            height: 4px;
-            background-color: rgba(255, 255, 255, 0.15);
-            border-radius: 2px;
-            transition: all 0.5s ease;
-          }
-
-          .indicator.active {
-            background-color: rgba(255, 0, 0, 0.8);
-            box-shadow: 0 0 8px rgba(255, 0, 0, 0.7);
-          }
-        }
-      `}</style>
     </div>
   );
 };

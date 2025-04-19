@@ -1,17 +1,17 @@
 :root {
-  --bg-primary: #0c1e35;
-  --bg-secondary: #132e4d;
-  --bg-tertiary: #193b5f;
-  --bg-hover: #214468;
-  --bg-input: #214468;
+  --bg-primary: #1a1a1a; /* Changed from blue to dashboard dark */
+  --bg-secondary: #212121; /* Changed to match dashboard sections */
+  --bg-tertiary: #2a2a2a; /* Changed to match dashboard cards */
+  --bg-hover: #333; /* Changed to match dashboard hover states */
+  --bg-input: #333; /* Changed to match dashboard form inputs */
   --text-primary: #ffffff;
   --text-secondary: #ccc;
-  --text-muted: #a8c6df;
-  --accent-color: #3498db;
-  --accent-color-hover: #2980b9;
-  --accent-color-light: rgba(52, 152, 219, 0.1);
-  --accent-color-medium: rgba(52, 152, 219, 0.3);
-  --success-color: #2ecc71;
+  --text-muted: #999; /* Changed from blue-ish to gray */
+  --accent-color: #ff4f5a; /* Changed from blue to red accent */
+  --accent-color-hover: #ff3a47; /* Changed to darker red */
+  --accent-color-light: rgba(255, 79, 90, 0.1); /* Changed to red with opacity */
+  --accent-color-medium: rgba(255, 79, 90, 0.3); /* Changed to red with opacity */
+  --success-color: #22c55e; /* Kept the same success color */
   --border-radius: 12px;
   --border-radius-sm: 8px;
   --transition-speed: 0.2s;
@@ -135,7 +135,7 @@ button:disabled {
 /* Inputs */
 input, textarea {
   background-color: var(--bg-input);
-  border: 1px solid #446;
+  border: 1px solid #444; /* Changed from #446 to #444 to match dashboard */
   color: var(--text-primary);
   padding: 12px 16px;
   border-radius: var(--border-radius-sm);
@@ -193,11 +193,35 @@ input[disabled], textarea[disabled] {
   box-shadow: var(--shadow-sm);
   transition: transform var(--transition-speed), box-shadow var(--transition-speed);
   cursor: pointer;
+  position: relative;
+  overflow: hidden;
 }
 
 .preset-card:hover {
   transform: translateY(-4px);
   box-shadow: var(--shadow-md);
+}
+
+/* Add gradient overlay effect on hover like AdminDashboard */
+.preset-card::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    135deg,
+    transparent 0%,
+    rgba(255, 79, 90, 0.1) 100%
+  );
+  opacity: 0;
+  transition: opacity 0.3s;
+  pointer-events: none;
+}
+
+.preset-card:hover::after {
+  opacity: 1;
 }
 
 .preset-card-content {
@@ -347,16 +371,62 @@ input[disabled], textarea[disabled] {
   font-size: 14px;
 }
 
+/* Animation effects from AdminDashboard */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.fade-in {
+  animation: fadeIn 0.5s ease-in-out;
+}
+
+/* Badge styles to match AdminDashboard */
+.badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.badge-primary {
+  background-color: #ff4f5a33;
+  color: #ff4f5a;
+}
+
+.badge-success {
+  background-color: #22c55e33;
+  color: #22c55e;
+}
+
+.badge-warning {
+  background-color: #f59e0b33;
+  color: #f59e0b;
+}
+
 /* Scrollbar */
 ::-webkit-scrollbar {
   width: 8px;
+  height: 8px;
 }
+
 ::-webkit-scrollbar-track {
-  background: var(--bg-tertiary);
+  background: #2a2a2a;
+  border-radius: 4px;
 }
+
 ::-webkit-scrollbar-thumb {
-  background: var(--bg-hover);
+  background: #444;
+  border-radius: 4px;
 }
+
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--accent-color-hover);
+  background: #555;
 }
