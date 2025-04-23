@@ -1,22 +1,22 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import supabase from "../../../../Backend/supabaseClient";
 import { toast } from "react-toastify";
 
 const Signup = () => {
   const navigate = useNavigate();
   const [step, setStep] = useState(0);
-  const [name, setName] = useState("");
-  const [enrollment, setEnrollment] = useState("");
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
+  const [formData, setFormData] = useState({
+    name: "",
+    enrollment: "",
+    password: "",
+    confirmPassword: ""
+  });
   const [errors, setErrors] = useState({});
   const [touched, setTouched] = useState({});
-
-  // For typing animation - improved approach
   const [isTyping, setIsTyping] = useState(true);
   const [displayedText, setDisplayedText] = useState("");
+  
   const typingTimerRef = useRef(null);
   const fullTextRef = useRef("");
   const charIndexRef = useRef(0);
@@ -31,7 +31,60 @@ const Signup = () => {
     "Please confirm your password.",
   ];
 
-  // Improved typing effect that ensures no characters are missed
+  // Memoized validation function to reduce unnecessary re-renders
+  const validate = useCallback((field, value) => {
+    const { enrollment, password } = formData;
+    
+    if (field === "name" && value && !/^[A-Za-z ]+$/.test(value)) {
+      return "Name should only contain alphabets.";
+    } 
+    
+    if (field === "enrollment" && value && !/^\d{4}$|^\d{11}$/.test(value)) {
+      return "Enrollment number must be either 6 digits (faculty) or 11 digits (student).";
+    } 
+    
+    if (field === "password" && value) {
+      let passwordErrors = [];
+      if (value.length < 11)
+        passwordErrors.push("Password must be at least 11 characters.");
+      if (!/[A-Z]/.test(value))
+        passwordErrors.push("Must contain at least 1 uppercase letter.");
+      if (!/[0-9]/.test(value))
+        passwordErrors.push("Must contain at least 1 number.");
+      if (!/[!@#$%^&*]/.test(value))
+        passwordErrors.push("Must contain at least 1 special character.");
+      if (value === enrollment)
+        passwordErrors.push("Should not be the same as the enrollment number.");
+      
+      return passwordErrors.length > 0 ? passwordErrors : null;
+    }
+    
+    if (field === "confirmPassword" && value && value !== password) {
+      return "Passwords do not match.";
+    }
+    
+    return null;
+  }, [formData]);
+
+  // Handle Input Changes with optimized validation
+  const handleInputChange = useCallback((field) => (e) => {
+    const value = e.target.value;
+    
+    setTouched(prev => ({ ...prev, [field]: true }));
+    setFormData(prev => ({ ...prev, [field]: value }));
+    
+    const validationResult = validate(field, value);
+    setErrors(prev => {
+      if (validationResult) {
+        return { ...prev, [field]: validationResult };
+      } else {
+        const { [field]: removed, ...rest } = prev;
+        return rest;
+      }
+    });
+  }, [validate]);
+
+  // Improved typing effect that runs only when step changes
   useEffect(() => {
     if (step < welcomeTexts.length) {
       // Reset animation state
@@ -48,8 +101,7 @@ const Signup = () => {
       // Start a new typing interval
       typingTimerRef.current = setInterval(() => {
         if (charIndexRef.current < fullTextRef.current.length) {
-          // Update displayed text with the next character
-          setDisplayedText(
+          setDisplayedText(prev => 
             fullTextRef.current.substring(0, charIndexRef.current + 1)
           );
           charIndexRef.current++;
@@ -58,7 +110,7 @@ const Signup = () => {
           clearInterval(typingTimerRef.current);
           setIsTyping(false);
         }
-      }, 50); // Slightly slower for better readability
+      }, 50);
 
       return () => {
         if (typingTimerRef.current) {
@@ -68,56 +120,9 @@ const Signup = () => {
     }
   }, [step]);
 
-  // Validation Logic
-  const validate = (field, value) => {
-    let validationErrors = { ...errors };
-
-    if (field === "name" && value && !/^[A-Za-z ]+$/.test(value)) {
-      validationErrors.name = "Name should only contain alphabets.";
-    } else {
-      delete validationErrors.name;
-    }
-
-    if (field === "enrollment" && value && !/^\d{4}$|^\d{11}$/.test(value)) {
-      validationErrors.enrollment =
-        "Enrollment number must be either 6 digits (faculty) or 11 digits (student).";
-    } else {
-      delete validationErrors.enrollment;
-    }
-
-    if (field === "password" && value) {
-      let passwordErrors = [];
-      if (value.length < 11)
-        passwordErrors.push("Password must be at least 11 characters.");
-      if (!/[A-Z]/.test(value))
-        passwordErrors.push("Must contain at least 1 uppercase letter.");
-      if (!/[0-9]/.test(value))
-        passwordErrors.push("Must contain at least 1 number.");
-      if (!/[!@#$%^&*]/.test(value))
-        passwordErrors.push("Must contain at least 1 special character.");
-      if (value === enrollment)
-        passwordErrors.push("Should not be the same as the enrollment number.");
-      if (passwordErrors.length > 0) validationErrors.password = passwordErrors;
-      else delete validationErrors.password;
-    }
-
-    if (field === "confirmPassword" && value && value !== password) {
-      validationErrors.confirmPassword = "Passwords do not match.";
-    } else {
-      delete validationErrors.confirmPassword;
-    }
-
-    setErrors(validationErrors);
-  };
-
-  // Handle Input Changes
-  const handleInputChange = (setter, field) => (e) => {
-    setTouched((prev) => ({ ...prev, [field]: true }));
-    setter(e.target.value);
-    validate(field, e.target.value);
-  };
-
-  const handleContinue = () => {
+  const handleContinue = useCallback(() => {
+    const { name, enrollment, password, confirmPassword } = formData;
+    
     // Validate current step before proceeding
     if (step === 2 && (!name || errors.name)) {
       toast.error("Please enter a valid name.");
@@ -125,7 +130,7 @@ const Signup = () => {
     }
 
     if (step === 3 && (!enrollment || errors.enrollment)) {
-      toast.error("Please enter a valid 11-digit enrollment number.");
+      toast.error("Please enter a valid enrollment number.");
       return;
     }
 
@@ -140,61 +145,68 @@ const Signup = () => {
     }
 
     if (step < welcomeTexts.length - 1) {
-      setStep(step + 1);
+      setStep(prev => prev + 1);
     } else {
       // All steps completed, submit the form
       handleSignup();
     }
-  };
+  }, [step, formData, errors]);
 
-  const handleKeyPress = (e) => {
+  const handleKeyPress = useCallback((e) => {
     if (e.key === "Enter" && !isTyping) {
       handleContinue();
     }
-  };
+  }, [isTyping, handleContinue]);
 
-  // Handle Signup API Call
+  // Handle Signup API Call with improved error handling and redirect
   const handleSignup = async () => {
-  if (Object.keys(errors).length > 0) {
-    toast.error("Please fix the errors before submitting.");
-    return;
-  }
-
-  if (password !== confirmPassword) {
-    toast.error("Passwords do not match!");
-    return;
-  }
-
-  try {
-    const response = await fetch("http://localhost:5000/api/auth/signup", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        name,
-        enrollment,
-        password,
-      }),
-    });
-
-    const result = await response.json();
-
-    if (!response.ok) {
-      throw new Error(result.message || "Signup failed");
+    const { name, enrollment, password, confirmPassword } = formData;
+    
+    if (Object.keys(errors).length > 0) {
+      toast.error("Please fix the errors before submitting.");
+      return;
     }
 
-    toast.success("✅ Signup successful! Redirecting to login... 🎉");
-    setTimeout(() => navigate("/login"), 1500);
-  } catch (error) {
-    console.error("❌ Error:", error.message);
-    toast.error(error.message || "Signup failed. Please try again.");
-  }
-};
+    if (password !== confirmPassword) {
+      toast.error("Passwords do not match!");
+      return;
+    }
 
+    try {
+      const response = await fetch("http://localhost:5000/api/auth/signup", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name,
+          enrollment,
+          password,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.message || "Signup failed");
+      }
+
+      // Success path
+      toast.success("✅ Signup successful! Redirecting to login... 🎉");
+      // Ensure redirect happens even if component unmounts
+      setTimeout(() => {
+        navigate("/login");
+      }, 1500);
+    } catch (error) {
+      console.error("❌ Error:", error.message);
+      toast.error(error.message || "Signup failed. Please try again.");
+    }
+  };
 
   // Render the appropriate input field based on the step
   const renderInputField = () => {
+    const { name, enrollment, password, confirmPassword } = formData;
+    
     if (step === 2) {
       return (
         <div className="input-field welcome-input">
@@ -203,7 +215,7 @@ const Signup = () => {
             type="text"
             placeholder="Your name"
             value={name}
-            onChange={handleInputChange(setName, "name")}
+            onChange={handleInputChange("name")}
             onKeyPress={handleKeyPress}
             autoFocus
           />
@@ -220,7 +232,7 @@ const Signup = () => {
             type="text"
             placeholder="11-digit enrollment number"
             value={enrollment}
-            onChange={handleInputChange(setEnrollment, "enrollment")}
+            onChange={handleInputChange("enrollment")}
             onKeyPress={handleKeyPress}
             autoFocus
           />
@@ -237,7 +249,7 @@ const Signup = () => {
             type="password"
             placeholder="Create password"
             value={password}
-            onChange={handleInputChange(setPassword, "password")}
+            onChange={handleInputChange("password")}
             onKeyPress={handleKeyPress}
             autoFocus
           />
@@ -260,7 +272,7 @@ const Signup = () => {
             type="password"
             placeholder="Confirm password"
             value={confirmPassword}
-            onChange={handleInputChange(setConfirmPassword, "confirmPassword")}
+            onChange={handleInputChange("confirmPassword")}
             onKeyPress={handleKeyPress}
             autoFocus
           />
@@ -304,7 +316,6 @@ const Signup = () => {
           </motion.div>
 
           <div className="message-bubble">
-            {/* Use a pre-element to ensure text spacing is preserved */}
             <p className="welcome-text">{displayedText}</p>
             {renderInputField()}
             {!isTyping && (

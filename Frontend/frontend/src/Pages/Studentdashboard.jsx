@@ -975,8 +975,8 @@ const StudentDashboard = () => {
           max-width: 500px;
           z-index: 101;
           position: fixed;
-          top: 50%;
-          left: 50%;
+          top: 30%;
+          left: 34%;
           transform: translate(-50%, -50%);
           box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
           border: 1px solid #ff4f5a33;
