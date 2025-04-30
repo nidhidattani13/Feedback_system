@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { fetchNotices } from "../../../../Backend/services/noticeService";
 
 const StudentDashboard = () => {
   const [subjects, setSubjects] = useState([]);

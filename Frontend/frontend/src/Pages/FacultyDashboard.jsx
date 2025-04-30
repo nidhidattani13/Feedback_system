@@ -1,9 +1,12 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import FacultyProfile from "./FacultyProfile"; // Import the FacultyProfile component
-import * as XLSX from 'xlsx'; // Import xlsx library
+import FacultyProfile from "./FacultyProfile";
+import * as XLSX from 'xlsx';
+import { fetchNotices } from "../../../../Backend/services/noticeService"; // Make sure this path is correct
+import supabase from "../../../../Backend/supabaseClient"; // Adjust the import path as necessary
 
 const FacultyDashboard = () => {
+  // Existing state variables
   const [subjects, setSubjects] = useState([]);
   const [groups, setGroups] = useState([]);
   const [newSubject, setNewSubject] = useState("");
@@ -16,62 +19,105 @@ const FacultyDashboard = () => {
   const [userData, setUserData] = useState(null);
   const [expandedSubject, setExpandedSubject] = useState(null);
   const [expandedGroup, setExpandedGroup] = useState(null);
-  
-  // Add state for faculty profile modal
   const [showProfileModal, setShowProfileModal] = useState(false);
-  
-  // New state variables for academic plan
   const [subjectPlanFile, setSubjectPlanFile] = useState(null);
   const [parsedPlan, setParsedPlan] = useState([]);
   const [showPlanPreview, setShowPlanPreview] = useState(false);
-
-  // Get user data from localStorage on component mount
+  // Update notices state to include proper structure
+  const [notices, setNotices] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
+  
   useEffect(() => {
-    const userDataString = localStorage.getItem("userData");
-    if (userDataString) {
-      const parsedUserData = JSON.parse(userDataString);
-      setUserData(parsedUserData);
-    } else {
-      // Default user data if nothing in localStorage
-      setUserData({
-        name: "Dr. Jane Smith",
-        title: "Associate Professor",
-        department: "Computer Science",
-        email: "j.smith@university.edu",
-        phone: "+1 (555) 234-5678",
-        office: "Tech Building, Room 305",
-        officeHours: "Tue, Thu: 1-3 PM",
-        researchInterests: "AI, Machine Learning, Computer Vision",
-        courses: "CS101, CS450, CS550",
-        bio: "Faculty member specializing in artificial intelligence and machine learning with 10 years of teaching experience.",
-      });
-    }
-    
-    // Load subjects from localStorage if available
-    const storedSubjects = localStorage.getItem("subjects");
-    if (storedSubjects) {
-      setSubjects(JSON.parse(storedSubjects));
-    }
+    const loadData = async () => {
+      setIsLoading(true);
+      setError(null);
+  
+      try {
+        console.log("Starting to fetch notices...");
+        let fetchedNotices = [];
+  
+        try {
+          fetchedNotices = await fetchNotices("all");
+          console.log("Notices fetched successfully:", fetchedNotices);
+        } catch (fetchError) {
+          console.error("Error fetching notices:", fetchError);
+          setError("Failed to load notices.");
+        }
+  
+        setNotices(fetchedNotices || []);
+  
+        // Load user profile (faculty)
+        try {
+          await fetchFacultyProfile();
+        } catch (profileError) {
+          console.error("Error loading faculty profile:", profileError);
+          setError(prev => prev || "Failed to load profile.");
+        }
+  
+        // Load subjects from localStorage
+        const storedSubjects = localStorage.getItem("subjects");
+        if (storedSubjects) {
+          setSubjects(JSON.parse(storedSubjects));
+        }
+      } catch (generalError) {
+        console.error("General error loading data:", generalError);
+        setError("Failed to load data. Please try again later.");
+        setNotices([]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+  
+    loadData();
   }, []);
+  
+  
+  const fetchFacultyProfile = async () => {
+    const userDataString = localStorage.getItem("userData");
 
-  // Function to open profile modal
-  const openProfileModal = () => {
-    setShowProfileModal(true);
+    if (userDataString) {
+      const { email } = JSON.parse(userDataString);
+
+      // Try fetching profile from Supabase
+      const { data, error } = await supabase
+        .from("faculty_profiles")
+        .select("*")
+        .eq("email", email)
+        .single();
+
+      if (data) {
+        setUserData(data);
+      } else {
+        console.warn("Supabase profile not found or error:", error?.message);
+
+        // Fallback default profile
+        setUserData({
+          name: "Dr. Jane Smith",
+          title: "Associate Professor",
+          department: "Computer Science",
+          email: "j.smith@university.edu",
+          phone: "+1 (555) 234-5678",
+          office: "Tech Building, Room 305",
+          officeHours: "Tue, Thu: 1-3 PM",
+          researchInterests: "AI, Machine Learning, Computer Vision",
+          courses: "CS101, CS450, CS550",
+          bio: "Faculty member specializing in artificial intelligence and machine learning with 10 years of teaching experience.",
+        });
+      }
+    } else {
+      console.warn("No user data found in localStorage");
+    }
   };
+  
+  const openProfileModal = () => setShowProfileModal(true);
+  const closeProfileModal = () => setShowProfileModal(false);
 
-  // Function to close profile modal
-  const closeProfileModal = () => {
-    setShowProfileModal(false);
-  };
-
-  // Function to save updated profile data
   const handleProfileUpdate = (updatedData) => {
     setUserData(updatedData);
-    // In a real application, you would also save this to localStorage or your backend
     localStorage.setItem("userData", JSON.stringify(updatedData));
   };
-
-  // Function to parse Excel file for subject plan
+  
   const handleSubjectPlanUpload = (e) => {
     const file = e.target.files[0];
     if (file) {
@@ -188,6 +234,9 @@ const FacultyDashboard = () => {
     const updatedSubjects = [...subjects];
     updatedSubjects[index].isActive = !updatedSubjects[index].isActive;
     setSubjects(updatedSubjects);
+    
+    // Update localStorage
+    localStorage.setItem("subjects", JSON.stringify(updatedSubjects));
   };
 
   const toggleGroupStatus = (index, event) => {
@@ -202,6 +251,9 @@ const FacultyDashboard = () => {
     const updatedSubjects = [...subjects];
     updatedSubjects.splice(index, 1);
     setSubjects(updatedSubjects);
+    
+    // Update localStorage
+    localStorage.setItem("subjects", JSON.stringify(updatedSubjects));
 
     if (expandedSubject === index) {
       setExpandedSubject(null);
@@ -508,43 +560,32 @@ const FacultyDashboard = () => {
                 </div>
 
                 <div className="notice-board">
-                  <div className="notice-item">
-                    <div className="notice-date">Mar 22, 2025</div>
-                    <h3 className="notice-title">
-                      End of Semester Approaching
-                    </h3>
-                    <p className="notice-text">
-                      Please submit all final grades by April 10th. Contact the
-                      registrar's office if you need assistance.
-                    </p>
-                  </div>
-
-                  <div className="notice-item">
-                    <div className="notice-date">Mar 20, 2025</div>
-                    <h3 className="notice-title">Faculty Meeting</h3>
-                    <p className="notice-text">
-                      Reminder: Department meeting scheduled for March 25th at
-                      2:00 PM in Conference Room B.
-                    </p>
-                  </div>
-
-                  <div className="notice-item">
-                    <div className="notice-date">Mar 18, 2025</div>
-                    <h3 className="notice-title">System Maintenance</h3>
-                    <p className="notice-text">
-                      The faculty portal will be unavailable on Saturday from 2
-                      AM to 5 AM due to scheduled maintenance.
-                    </p>
-                  </div>
-
-                  <div className="notice-item">
-                    <div className="notice-date">Mar 15, 2025</div>
-                    <h3 className="notice-title">Research Grant Opportunity</h3>
-                    <p className="notice-text">
-                      New research grants available. Applications due by April
-                      15th. See Research Office for details.
-                    </p>
-                  </div>
+                  {isLoading ? (
+                    <div className="loading-indicator">
+                      <p>Loading notices...</p>
+                    </div>
+                  ) : error ? (
+                    <div className="error-message">
+                      <p>{error}</p>
+                    </div>
+                  ) : notices && notices.length > 0 ? (
+                    notices.map((notice) => (
+                      <div className="notice-item" key={notice.id}>
+                        <div className="notice-date">{notice.date}</div>
+                        <h3 className="notice-title">{notice.title}</h3>
+                        <p className="notice-text">{notice.text}</p>
+                        {notice.created_by && (
+                          <div className="notice-author">
+                            Posted by: {notice.created_by}
+                          </div>
+                        )}
+                      </div>
+                    ))
+                  ) : (
+                    <div className="empty-state">
+                      <p>No notices available</p>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -557,6 +598,7 @@ const FacultyDashboard = () => {
         isOpen={showProfileModal}
         onClose={closeProfileModal}
         initialData={userData}
+        onUpdate={handleProfileUpdate}
       />
 
       {/* Subject Modal */}

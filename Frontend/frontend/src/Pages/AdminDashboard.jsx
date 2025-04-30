@@ -21,6 +21,7 @@ const AdminDashboard = () => {
   const [expandedFaculty, setExpandedFaculty] = useState(null);
   const [showProfileModal, setShowProfileModal] = useState(false); // New state for profile modal
 
+
   // Sample admin data for the profile
   const adminData = {
     name: "Admin User",
@@ -30,7 +31,7 @@ const AdminDashboard = () => {
     phone: "+1 (555) 123-4567",
     avatar: null,
   };
-
+  
   useEffect(() => {
     // Initialize with sample faculty data
     setFaculty([
@@ -50,29 +51,33 @@ const AdminDashboard = () => {
       },
     ]);
 
-    // Initialize with sample notices
-    setNotices([
-      {
-        date: "April 16, 2025",
-        title: "Meeting at 3 PM",
-        text: "All staff are requested to attend the planning meeting at 3 PM in Conference Room A.",
-      },
-      {
-        date: "April 14, 2025",
-        title: "New Subject Added",
-        text: "Data Science has been added to the curriculum. Assign faculty by the end of the week.",
-      },
-      {
-        date: "April 10, 2025",
-        title: "System Update",
-        text: "The system will undergo maintenance on April 20th. Please complete any pending work before then.",
-      },
-      {
-        date: "April 5, 2025",
-        title: "Faculty Review",
-        text: "Annual faculty performance reviews will start next month. Prepare necessary documentation.",
-      },
-    ]);
+    const fetchNotices = async () => {
+      try {
+        const response = await fetch("http://localhost:5000/api/notices");
+        
+        if (!response.ok) {
+          throw new Error(`Error fetching notices: ${response.status}`);
+        }
+        
+        const noticesData = await response.json();
+        console.log("Notices loaded from database:", noticesData);
+        
+        // If we got notices from the database, use them
+        if (noticesData && noticesData.length > 0) {
+          setNotices(noticesData);
+        } else {
+          // Otherwise use sample notices
+          setNotices(sampleNotices);
+        }
+      } catch (error) {
+        console.error("Failed to fetch notices:", error);
+        // On error, fall back to sample notices
+        setNotices(sampleNotices);
+      }
+    };
+  
+    // Call the function to fetch notices
+    fetchNotices();
   }, []);
 
   const handleAddSubject = () => {
@@ -112,21 +117,54 @@ const AdminDashboard = () => {
     }
   };
 
-  const handleAddNotice = () => {
+  const handleAddNotice = async () => {
     if (newNoticeTitle.trim() !== "" && newNotice.trim() !== "") {
-      setNotices([
-        {
-          date: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
+      try {
+        const noticeData = {
           title: newNoticeTitle,
-          text: newNotice,
-        },
-        ...notices, // Add new notice at the top
-      ]);
-      setNewNoticeTitle("");
-      setNewNotice("");
-      setShowNoticeModal(false);
+          content: newNotice,
+          audience: ["all"],
+          created_by: "Admin User"
+        };
+        
+        console.log("Sending notice data:", noticeData);
+        
+        const response = await fetch("http://localhost:5000/api/notices", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(noticeData),
+        });
+        
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(`Server responded with ${response.status}: ${errorText}`);
+        }
+        
+        const savedNotice = await response.json();
+        console.log("Notice added successfully:", savedNotice);
+        
+        // Add the new notice to the state with the proper format
+        const newNoticeForState = {
+          id: savedNotice.id,
+          date: savedNotice.date,
+          title: savedNotice.title,
+          text: savedNotice.text || newNotice // Fallback to form input if text is missing
+        };
+        
+        setNotices([newNoticeForState, ...notices]);
+        setNewNoticeTitle("");
+        setNewNotice("");
+        setShowNoticeModal(false);
+        
+        // Show success message to user
+        alert("Notice added successfully!");
+      } catch (err) {
+        console.error("Error posting notice:", err);
+        alert(`Error posting notice: ${err.message}`);
+      }
     }
   };
+  
 
   const handleRemoveNotice = (index) => {
     const updatedNotices = [...notices];

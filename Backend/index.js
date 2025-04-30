@@ -6,7 +6,7 @@ import { createClient } from '@supabase/supabase-js';
 import authRoutes from './routes/auth.js';
 import adminRoutes from './routes/admin.js'; 
 import facultyRoutes from './routes/faculty.js'; // Import faculty routes
-
+import noticeRoutes from './routes/notices.js'; // Import notice routes
 // Load environment variables
 dotenv.config();
 
@@ -50,12 +50,29 @@ app.get("/test-supabase", async (req, res) => {
   }
 });
 
+// Test route for notices - add this in index.js
+app.get("/api/notices-test", (req, res) => {
+  console.log("GET /api/notices-test endpoint reached");
+  res.json({ message: "GET notices test endpoint working" });
+});
+
+app.post("/api/notices-test", (req, res) => {
+  console.log("POST /api/notices-test endpoint reached");
+  console.log("Body received:", req.body);
+  res.status(201).json({ 
+    message: "POST notices test endpoint working",
+    receivedData: req.body
+  });
+});
+
 // Routes for Authentication (Signup, Login)
 app.use("/api/auth", authRoutes);
 // Routes for Admin Profile Management
 app.use("/api/admin", adminRoutes);
 // Routes for Faculty Management
 app.use("/api/faculty", facultyRoutes);
+// Routes for Notices Management
+app.use("/api/notices", noticeRoutes);
 
 
 // Server configuration
