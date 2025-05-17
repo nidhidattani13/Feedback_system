@@ -10,8 +10,6 @@ const FacultyProfile = ({ isOpen, onClose, initialData }) => {
     email: initialData?.email || "faculty@example.com",
     phone: initialData?.phone || "+1 (555) 123-4567",
     office: initialData?.office || "Building A, Room 101",
-    officeHours: initialData?.officeHours || "Mon, Wed: 2-4 PM",
-    researchInterests: initialData?.researchInterests || "Machine Learning, Data Science",
     courses: initialData?.courses || "CS101, CS202, CS350",
     bio: initialData?.bio || "Faculty member with expertise in computer science and related fields.",
     avatar: initialData?.avatar || null,
