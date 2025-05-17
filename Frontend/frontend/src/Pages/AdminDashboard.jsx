@@ -19,8 +19,21 @@ const AdminDashboard = () => {
   const [showNoticeModal, setShowNoticeModal] = useState(false);
   const [expandedSubject, setExpandedSubject] = useState(null);
   const [expandedFaculty, setExpandedFaculty] = useState(null);
-  const [showProfileModal, setShowProfileModal] = useState(false); // New state for profile modal
+  const [showProfileModal, setShowProfileModal] = useState(false);
+  const [userData, setUserData] = useState(null);
 
+  // Signout function
+  const handleSignout = async () => {
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+      localStorage.removeItem('userData');
+      window.location.href = '/login';
+    } catch (err) {
+      console.error('Signout error:', err);
+      alert('Error signing out. Please try again.');
+    }
+  };
 
   // Sample admin data for the profile
   const adminData = {
@@ -31,26 +44,33 @@ const AdminDashboard = () => {
     phone: "+1 (555) 123-4567",
     avatar: null,
   };
-  
+
   useEffect(() => {
-    // Initialize with sample faculty data
+    // Initialize with sample faculty data and admin profile
     setFaculty([
       {
         name: "John Doe",
         department: "Computer Science",
-        info: "Professor of Computer Science",
-        isActive: true,
-        lastUpdated: "April 14, 2025",
-      },
+        email: "john.doe@example.com",
+        phone: "123-456-7890",
+        office: "Tech Building, Room 203",
+        courses: "CS101, CS202, CS303",
+        bio: "Experienced computer science professor with 15 years of teaching experience.",
+        avatar: null,
+        isActive: true
+      }
+    ]);
+    setUserData(adminData);
+    setNotices([
       {
-        name: "Jane Smith",
-        department: "Mathematics",
-        info: "Associate Professor of Mathematics",
-        isActive: false,
-        lastUpdated: "April 12, 2025",
-      },
+        title: "Welcome to the Dashboard",
+        text: "This is a sample notice. In a real application, this would be fetched from the server.",
+        date: new Date().toISOString(),
+        id: "1"
+      }
     ]);
 
+    // Fetch real notices from server
     const fetchNotices = async () => {
       try {
         const response = await fetch("http://localhost:5000/api/notices");
@@ -61,22 +81,13 @@ const AdminDashboard = () => {
         
         const noticesData = await response.json();
         console.log("Notices loaded from database:", noticesData);
-        
-        // If we got notices from the database, use them
-        if (noticesData && noticesData.length > 0) {
-          setNotices(noticesData);
-        } else {
-          // Otherwise use sample notices
-          setNotices(sampleNotices);
-        }
+        setNotices(noticesData);
       } catch (error) {
-        console.error("Failed to fetch notices:", error);
-        // On error, fall back to sample notices
-        setNotices(sampleNotices);
+        console.error("Error fetching notices:", error);
       }
     };
-  
-    // Call the function to fetch notices
+
+    // Call fetchNotices when component mounts
     fetchNotices();
   }, []);
 
@@ -239,11 +250,33 @@ const AdminDashboard = () => {
         <header className="content-header">
           <h2>Admin Dashboard</h2>
           <div className="header-controls">
-            <button className="control-btn">⚙️</button>
-            <div className="user-info-compact" onClick={toggleProfileModal}>
-              <span>Admin User</span>
-              <div className="department-badge">Admin Panel</div>
-            </div>
+            {userData && (
+              <div className="user-info-compact" onClick={() => setShowProfileModal(true)}>
+                <span>Welcome, {userData.name || "Admin"}</span>
+                <div className="department-badge">
+                  {userData.position || "Position"}
+                </div>
+                <div className="profile-icon">
+                  {userData.avatar ? (
+                    <img
+                      src={userData.avatar}
+                      alt="Profile"
+                      className="avatar-mini"
+                    />
+                  ) : (
+                    <div className="avatar-placeholder-mini">
+                      {userData.name
+                        .split(" ")
+                        .map((n) => n[0])
+                        .join("")}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+            <button className="control-btn" onClick={handleSignout}>
+              Sign Out
+            </button>
           </div>
         </header>
 

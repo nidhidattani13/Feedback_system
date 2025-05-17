@@ -27,16 +27,29 @@ const FacultyDashboard = () => {
   const [notices, setNotices] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
-  
+
+  // Signout function
+  const handleSignout = async () => {
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+      localStorage.removeItem('userData');
+      window.location.href = '/login'; // Redirect to login page
+    } catch (err) {
+      console.error('Signout error:', err);
+      alert('Error signing out. Please try again.');
+    }
+  };
+
   useEffect(() => {
     const loadData = async () => {
       setIsLoading(true);
       setError(null);
-  
+
       try {
         console.log("Starting to fetch notices...");
         let fetchedNotices = [];
-  
+
         try {
           fetchedNotices = await fetchNotices("all");
           console.log("Notices fetched successfully:", fetchedNotices);
@@ -44,9 +57,9 @@ const FacultyDashboard = () => {
           console.error("Error fetching notices:", fetchError);
           setError("Failed to load notices.");
         }
-  
+
         setNotices(fetchedNotices || []);
-  
+
         // Load user profile (faculty)
         try {
           await fetchFacultyProfile();
@@ -54,7 +67,7 @@ const FacultyDashboard = () => {
           console.error("Error loading faculty profile:", profileError);
           setError(prev => prev || "Failed to load profile.");
         }
-  
+
         // Load subjects from localStorage
         const storedSubjects = localStorage.getItem("subjects");
         if (storedSubjects) {
@@ -68,15 +81,24 @@ const FacultyDashboard = () => {
         setIsLoading(false);
       }
     };
-  
+
     loadData();
   }, []);
-  
-  
-  const fetchFacultyProfile = async () => {
-    const userDataString = localStorage.getItem("userData");
 
-    if (userDataString) {
+  const fetchFacultyProfile = async () => {
+    try {
+      // First check if we're authenticated
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      if (authError || !user) {
+        throw new Error("Not authenticated");
+      }
+
+      // Get user data from localStorage
+      const userDataString = localStorage.getItem("userData");
+      if (!userDataString) {
+        throw new Error("No user data found");
+      }
+
       const { email } = JSON.parse(userDataString);
 
       // Try fetching profile from Supabase
@@ -84,32 +106,46 @@ const FacultyDashboard = () => {
         .from("faculty_profiles")
         .select("*")
         .eq("email", email)
-        .single();
+        .maybeSingle();
+
+      if (error) {
+        throw error;
+      }
 
       if (data) {
         setUserData(data);
       } else {
-        console.warn("Supabase profile not found or error:", error?.message);
+        // Create default profile if none exists
+        const defaultProfile = {
+          name: user.user_metadata?.full_name || "Faculty Member",
+          title: "Professor",
+          department: "",
+          email: user.email,
+          phone: "",
+          office: "",
+          officeHours: "",
+          researchInterests: "",
+          courses: "",
+          bio: "",
+        };
 
-        // Fallback default profile
-        setUserData({
-          name: "Dr. Jane Smith",
-          title: "Associate Professor",
-          department: "Computer Science",
-          email: "j.smith@university.edu",
-          phone: "+1 (555) 234-5678",
-          office: "Tech Building, Room 305",
-          officeHours: "Tue, Thu: 1-3 PM",
-          researchInterests: "AI, Machine Learning, Computer Vision",
-          courses: "CS101, CS450, CS550",
-          bio: "Faculty member specializing in artificial intelligence and machine learning with 10 years of teaching experience.",
-        });
+        // Save default profile to Supabase
+        const { error: insertError } = await supabase
+          .from("faculty_profiles")
+          .insert(defaultProfile);
+
+        if (insertError) {
+          throw insertError;
+        }
+
+        setUserData(defaultProfile);
       }
-    } else {
-      console.warn("No user data found in localStorage");
+    } catch (error) {
+      console.error("Error fetching faculty profile:", error);
+      throw error;
     }
   };
-  
+
   const openProfileModal = () => setShowProfileModal(true);
   const closeProfileModal = () => setShowProfileModal(false);
 
