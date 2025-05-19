@@ -93,6 +93,8 @@ const ReportView = ({ mode = "admin" }) => {
   const [submitted, setSubmitted] = useState(false);
   const [currentOptionInput, setCurrentOptionInput] = useState("");
   const [editingQuestion, setEditingQuestion] = useState(null);
+  // New state to control whether to show published form view
+  const [viewingPublishedForm, setViewingPublishedForm] = useState(false);
 
   // Load presets and published form from localStorage on component mount
   useEffect(() => {
@@ -109,6 +111,8 @@ const ReportView = ({ mode = "admin" }) => {
     const savedPublishedForm = localStorage.getItem('publishedForm');
     if (savedPublishedForm) {
       setPublishedForm(JSON.parse(savedPublishedForm));
+      // If there's a published form, default to showing it
+      setViewingPublishedForm(true);
     }
   }, []);
 
@@ -117,6 +121,7 @@ const ReportView = ({ mode = "admin" }) => {
     setSelectedPreset(preset);
     setCurrentForm({ ...preset });
     setIsCreatingNew(false);
+    setViewingPublishedForm(false);
   };
 
   // Create a new preset
@@ -124,6 +129,7 @@ const ReportView = ({ mode = "admin" }) => {
     setIsCreatingNew(true);
     setSelectedPreset(null);
     setCurrentForm({ name: "New Form", questions: [] });
+    setViewingPublishedForm(false);
   };
 
   // Add a new question to the form
@@ -273,6 +279,7 @@ const ReportView = ({ mode = "admin" }) => {
 
     setPublishedForm(currentForm);
     localStorage.setItem('publishedForm', JSON.stringify(currentForm));
+    setViewingPublishedForm(true);
     alert("Form published successfully! Students can now access it.");
   };
 
@@ -352,6 +359,31 @@ const ReportView = ({ mode = "admin" }) => {
       ...currentForm,
       questions: newQuestions
     });
+  };
+
+  // Toggle back to form list view
+  const handleBackToForms = () => {
+    setViewingPublishedForm(false);
+    setIsCreatingNew(false);
+    setSelectedPreset(null);
+    setEditingQuestion(null);
+  };
+
+  // View the currently published form
+  const handleViewPublishedForm = () => {
+    setViewingPublishedForm(true);
+    setIsCreatingNew(false);
+    setSelectedPreset(null);
+  };
+
+  // Unpublish the current form
+  const handleUnpublishForm = () => {
+    if (window.confirm("Are you sure you want to unpublish this form?")) {
+      localStorage.removeItem('publishedForm');
+      setPublishedForm(null);
+      setViewingPublishedForm(false);
+      alert("Form has been unpublished.");
+    }
   };
 
   // Render the question editor based on question type
@@ -508,6 +540,43 @@ const ReportView = ({ mode = "admin" }) => {
     }
   };
 
+  // Render the Published Form Preview (in Admin mode)
+  const renderPublishedFormPreview = () => (
+    <div className="published-form-preview">
+      <div className="published-form-header">
+        <div className="published-status">
+          <span className="status-indicator"></span>
+          <span className="status-text">Published Form</span>
+        </div>
+        <h2>{publishedForm.name}</h2>
+        <p className="form-description">This form is currently published and available to students.</p>
+      </div>
+      
+      <div className="published-form-actions">
+        <button className="back-btn" onClick={handleBackToForms}>
+          ← Back to Forms
+        </button>
+        <button className="danger-btn" onClick={handleUnpublishForm}>
+          Unpublish Form
+        </button>
+      </div>
+      
+      <div className="published-form-questions">
+        {publishedForm.questions.map((question, index) => (
+          <div key={question.id} className="preview-question-item">
+            <div className="preview-question-header">
+              <span className="question-number">{index + 1}</span>
+              <h3 className="question-text">{question.label}</h3>
+            </div>
+            <div className="preview-question-content">
+              {renderQuestionPreview(question)}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+
   // Render the Admin view
   const renderAdminView = () => (
     <div className="report-admin-view">
@@ -516,11 +585,22 @@ const ReportView = ({ mode = "admin" }) => {
         <p className="subtitle">Design and publish feedback forms for your students</p>
       </div>
       
-      {!isCreatingNew && !selectedPreset && (
+      {/* Show Published Form First */}
+      {publishedForm && viewingPublishedForm && renderPublishedFormPreview()}
+      
+      {/* Show Form List or Form Builder */}
+      {!viewingPublishedForm && !isCreatingNew && !selectedPreset && (
         <div className="preset-section">
           <div className="section-header">
             <h2>Select a Preset or Create New</h2>
-            <button className="create-new-btn" onClick={handleCreateNew}>Create New Form</button>
+            <div className="section-actions">
+              {publishedForm && (
+                <button className="view-published-btn" onClick={handleViewPublishedForm}>
+                  View Published Form
+                </button>
+              )}
+              <button className="create-new-btn" onClick={handleCreateNew}>Create New Form</button>
+            </div>
           </div>
           
           <div className="preset-grid">
@@ -550,7 +630,7 @@ const ReportView = ({ mode = "admin" }) => {
         </div>
       )}
 
-      {(isCreatingNew || selectedPreset) && (
+      {!viewingPublishedForm && (isCreatingNew || selectedPreset) && (
         <div className="form-builder">
           <div className="form-builder-header">
             <input 
@@ -565,6 +645,9 @@ const ReportView = ({ mode = "admin" }) => {
                 setIsCreatingNew(false);
                 setSelectedPreset(null);
                 setEditingQuestion(null);
+                if (publishedForm) {
+                  setViewingPublishedForm(true);
+                }
               }}>Cancel</button>
               <button className="save-preset-btn" onClick={handleSavePreset}>Save Preset</button>
               <button className="publish-form-btn" onClick={handlePublishForm}>Publish Form</button>
