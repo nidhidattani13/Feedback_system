@@ -59,17 +59,31 @@ const FacultyProfile = ({ isOpen, onClose, initialData }) => {
     });
   };
 
-  const handleSaveProfile = () => {
-    // Here you would typically have API call to update the profile
-    // For now we'll just simulate a successful save
-    setTimeout(() => {
+  const handleSaveProfile = async () => {
+    try {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/profile`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify(profileData)
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update profile');
+      }
+
       setIsEditing(false);
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3000);
-    }, 800);
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      alert('Failed to update profile. Please try again.');
+    }
   };
 
-  const handleChangePassword = () => {
+  const handleChangePassword = async () => {
     setPasswordError("");
     
     // Validate passwords
@@ -82,10 +96,21 @@ const FacultyProfile = ({ isOpen, onClose, initialData }) => {
       setPasswordError("Password must be at least 8 characters");
       return;
     }
-    
-    // Here you would typically have API call to update the password
-    // For now we'll just simulate a successful update
-    setTimeout(() => {
+
+    try {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/change-password`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify(passwordData)
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to change password');
+      }
+
       setIsChangingPassword(false);
       setPasswordData({
         currentPassword: "",
@@ -94,7 +119,10 @@ const FacultyProfile = ({ isOpen, onClose, initialData }) => {
       });
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3000);
-    }, 800);
+    } catch (error) {
+      console.error('Error changing password:', error);
+      alert('Failed to change password. Please try again.');
+    }
   };
 
   const handleAvatarUpload = (e) => {
