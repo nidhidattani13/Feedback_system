@@ -1,6 +1,6 @@
 import React from "react";
 
-const Dashboard = () => {
+const Home = () => {
   return (
     <div style={containerStyle}>
       <div style={dashboardStyle}>
@@ -100,4 +100,4 @@ moduleStyle[":hover"] = {
   transform: "translateY(-5px)",
 };
 
-export default Dashboard;
+export default Home;

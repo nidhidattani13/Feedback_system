@@ -16,16 +16,17 @@ export default function App() {
     <Router>
       <Routes>
         {/* Public Pages */}
-        <Route path="/login" element={<Login />} />
-        <Route path="/signup" element={<Signup />} />
+        <Route path="/feedback-system/login" element={<Login />} />
+        <Route path="/feedback-system/signup" element={<Signup />} />
+        <Route path="/feedback-system/" element={<Login />} />
 
         {/* Dashboard Pages Wrapped in Layout */}
         <Route element={<Layout />}>
-          <Route path="/" element={<Login />} />
-          <Route path="/student-dashboard" element={<StudentDashboard />} />
-          <Route path="/faculty-dashboard" element={<FacultyDashboard />} />
-          <Route path="/admin-dashboard" element={<AdminDashboard />} />
-          {/* <Route path="/report" element={<ReportView />} /> */}
+          <Route path="/feedback-system/home" element={<Home />} />
+          <Route path="/feedback-system/student-dashboard" element={<StudentDashboard />} />
+          <Route path="/feedback-system/faculty-dashboard" element={<FacultyDashboard />} />
+          <Route path="/feedback-system/admin-dashboard" element={<AdminDashboard />} />
+          {/* <Route path="/feedback-system/report" element={<ReportView />} /> */}
         </Route>
       </Routes>
     </Router>
