@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { fetchNotices } from "../../../../Backend/services/noticeService";
+import StudentProfile from "./StudentProfile";
 
 const StudentDashboard = () => {
   const [subjects, setSubjects] = useState([]);
@@ -12,6 +12,7 @@ const StudentDashboard = () => {
   const [reviews, setReviews] = useState([]);
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [submitLoading, setSubmitLoading] = useState(false);
+  const [showProfileModal, setShowProfileModal] = useState(false);
 
   // Mock data for initial setup
   useEffect(() => {
@@ -180,15 +181,36 @@ const StudentDashboard = () => {
           <h2>Student Portal</h2>
           <div className="header-controls">
             {userData && (
-              <div className="user-info-compact">
-                <span>Welcome, {userData.name || "Student"}</span>
-                <div className="department-badge">
-                  {userData.program || "Student"}
+              <>
+                <div className="user-info-compact">
+                  <span>Welcome, {userData.name || "Student"}</span>
+                  <div className="department-badge">
+                    {userData.program || "Student"}
+                  </div>
                 </div>
-              </div>
+                <div 
+                  className="profile-icon" 
+                  onClick={() => setShowProfileModal(true)}
+                  title="View Profile"
+                >
+                  {userData.avatar ? (
+                    <img src={userData.avatar} alt="Profile" className="avatar-small" />
+                  ) : (
+                    <div className="avatar-initials">
+                      {userData.name.split(' ').map(n => n[0]).join('')}
+                    </div>
+                  )}
+                </div>
+              </>
             )}
           </div>
         </header>
+
+        <StudentProfile 
+          isOpen={showProfileModal} 
+          onClose={() => setShowProfileModal(false)} 
+          initialData={userData}
+        />
 
         <div className="content-area">
           <div className="dashboard-layout">
@@ -520,6 +542,30 @@ const StudentDashboard = () => {
           border-radius: 20px;
           font-size: 12px;
           font-weight: 500;
+        }
+
+        .profile-icon {
+          width: 36px;
+          height: 36px;
+          border-radius: 50%;
+          background: #ff4f5a;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          color: white;
+          font-weight: bold;
+        }
+
+        .avatar-small {
+          width: 36px;
+          height: 36px;
+          border-radius: 50%;
+          object-fit: cover;
+        }
+
+        .avatar-initials {
+          font-size: 14px;
         }
 
         .content-area {
@@ -976,8 +1022,8 @@ const StudentDashboard = () => {
           max-width: 500px;
           z-index: 101;
           position: fixed;
-          top: 30%;
-          left: 34%;
+          top: 50%;
+          left: 50%;
           transform: translate(-50%, -50%);
           box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
           border: 1px solid #ff4f5a33;
@@ -1027,127 +1073,126 @@ const StudentDashboard = () => {
         }
 
         .textarea-field {
-          width:.textarea-field {
-  width: 100%;
-  padding: 12px;
-  border: 1px solid #444;
-  background-color: #333;
-  border-radius: 8px;
-  font-size: 14px;
-  color: #fff;
-  resize: vertical;
-  min-height: 100px;
-  margin-bottom: 16px;
-}
+          width: 100%;
+          padding: 12px;
+          border: 1px solid #444;
+          background-color: #333;
+          border-radius: 8px;
+          font-size: 14px;
+          color: #fff;
+          resize: vertical;
+          min-height: 100px;
+          margin-bottom: 16px;
+        }
 
-.textarea-field:focus {
-  outline: none;
-  border-color: #ff4f5a;
-  box-shadow: 0 0 0 2px #ff4f5a33;
-}
+        .textarea-field:focus {
+          outline: none;
+          border-color: #ff4f5a;
+          box-shadow: 0 0 0 2px #ff4f5a33;
+        }
 
-.button-container {
-  display: flex;
-  gap: 12px;
-  justify-content: flex-end;
-}
+        .button-container {
+          display: flex;
+          gap: 12px;
+          justify-content: flex-end;
+        }
 
-.confirm-button {
-  background: #ff4f5a;
-  color: white;
-  border: none;
-  padding: 10px 20px;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 14px;
-  transition: background-color 0.2s;
-}
+        .confirm-button {
+          background: #ff4f5a;
+          color: white;
+          border: none;
+          padding: 10px 20px;
+          border-radius: 6px;
+          cursor: pointer;
+          font-size: 14px;
+          transition: background-color 0.2s;
+        }
 
-.confirm-button:hover {
-  background: #ff3a47;
-}
+        .confirm-button:hover {
+          background: #ff3a47;
+        }
 
-.confirm-button:disabled {
-  background: #666;
-  cursor: not-allowed;
-}
+        .confirm-button:disabled {
+          background: #666;
+          cursor: not-allowed;
+        }
 
-.cancel-button {
-  background: none;
-  border: 1px solid #666;
-  color: #ccc;
-  padding: 10px 20px;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 14px;
-  transition: all 0.2s;
-}
+        .cancel-button {
+          background: none;
+          border: 1px solid #666;
+          color: #ccc;
+          padding: 10px 20px;
+          border-radius: 6px;
+          cursor: pointer;
+          font-size: 14px;
+          transition: all 0.2s;
+        }
 
-.cancel-button:hover {
-  background: #333;
-  border-color: #999;
-}
+        .cancel-button:hover {
+          background: #333;
+          border-color: #999;
+        }
 
-/* Responsive Adjustments */
-@media (max-width: 1024px) {
-  .dashboard-layout {
-    flex-direction: column;
-  }
-  
-  .right-container {
-    max-width: 100%;
-  }
-  
-  .subjects-grid {
-    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  }
-}
+        /* Responsive Adjustments */
+        @media (max-width: 1024px) {
+          .dashboard-layout {
+            flex-direction: column;
+          }
+          
+          .right-container {
+            max-width: 100%;
+          }
+          
+          .subjects-grid {
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+          }
+        }
 
-@media (max-width: 768px) {
-  .featured-card {
-    padding: 24px;
-  }
-  
-  .section {
-    padding: 16px;
-  }
-  
-  .content-area {
-    padding: 16px;
-  }
-  
-  .notice-board {
-    max-height: 400px;
-  }
-}
+        @media (max-width: 768px) {
+          .featured-card {
+            padding: 24px;
+          }
+          
+          .section {
+            padding: 16px;
+          }
+          
+          .content-area {
+            padding: 16px;
+          }
+          
+          .notice-board {
+            max-height: 400px;
+          }
+        }
 
-@media (max-width: 480px) {
-  .subjects-grid {
-    grid-template-columns: 1fr;
-  }
-  
-  .featured-buttons {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-  
-  .featured-btn {
-    width: 100%;
-  }
-  
-  .button-container {
-    flex-direction: column;
-  }
-  
-  .confirm-button, .cancel-button {
-    width: 100%;
-  }
-  
-  .modal-container {
-    width: 90%;
-    padding: 16px;
-  }
-}
+        @media (max-width: 480px) {
+          .subjects-grid {
+            grid-template-columns: 1fr;
+          }
+          
+          .featured-buttons {
+            flex-direction: column;
+            align-items: flex-start;
+          }
+          
+          .featured-btn {
+            width: 100%;
+          }
+          
+          .button-container {
+            flex-direction: column;
+          }
+          
+          .confirm-button, .cancel-button {
+            width: 100%;
+          }
+          
+          .modal-container {
+            width: 90%;
+            padding: 16px;
+          }
+        }
       `}</style>
     </div>
   );
