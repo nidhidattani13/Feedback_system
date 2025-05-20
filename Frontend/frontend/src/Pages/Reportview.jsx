@@ -93,8 +93,13 @@ const ReportView = ({ mode = "admin" }) => {
   const [submitted, setSubmitted] = useState(false);
   const [currentOptionInput, setCurrentOptionInput] = useState("");
   const [editingQuestion, setEditingQuestion] = useState(null);
-  // New state to control whether to show published form view
   const [viewingPublishedForm, setViewingPublishedForm] = useState(false);
+  
+  // Random assigner states
+  const [students, setStudents] = useState([]);
+  const [assignedStudents, setAssignedStudents] = useState([]);
+  const [showRandomAssigner, setShowRandomAssigner] = useState(false);
+  const [lastAssignedIds, setLastAssignedIds] = useState([]);
 
   // Load presets and published form from localStorage on component mount
   useEffect(() => {
@@ -111,10 +116,140 @@ const ReportView = ({ mode = "admin" }) => {
     const savedPublishedForm = localStorage.getItem('publishedForm');
     if (savedPublishedForm) {
       setPublishedForm(JSON.parse(savedPublishedForm));
-      // If there's a published form, default to showing it
       setViewingPublishedForm(true);
     }
+    
+    // Load mock student data
+    const mockStudents = loadMockStudents();
+    setStudents(mockStudents);
+    
+    // Load any previously assigned students
+    const savedAssignedStudents = localStorage.getItem('assignedStudents');
+    if (savedAssignedStudents) {
+      setAssignedStudents(JSON.parse(savedAssignedStudents));
+    }
+
+    // Load last assigned student IDs
+    const savedLastAssignedIds = localStorage.getItem('lastAssignedIds');
+    if (savedLastAssignedIds) {
+      setLastAssignedIds(JSON.parse(savedLastAssignedIds));
+    }
   }, []);
+
+  // Mock function to generate student data
+  const loadMockStudents = () => {
+    const mockStudents = [];
+    
+    // Generate outstanding students (CGPA >= 3.7)
+    for (let i = 0; i < 10; i++) {
+      mockStudents.push({
+        id: `outstanding-${i}`,
+        name: `Outstanding Student ${i + 1}`,
+        email: `outstanding${i + 1}@example.com`,
+        academicDetails: {
+          cgpa: (3.7 + Math.random() * 0.3).toFixed(2) // Between 3.7 and 4.0
+        }
+      });
+    }
+    
+    // Generate above average students (CGPA 3.0-3.69)
+    for (let i = 0; i < 15; i++) {
+      mockStudents.push({
+        id: `aboveavg-${i}`,
+        name: `Above Average Student ${i + 1}`,
+        email: `aboveavg${i + 1}@example.com`,
+        academicDetails: {
+          cgpa: (3.0 + Math.random() * 0.69).toFixed(2) // Between 3.0 and 3.69
+        }
+      });
+    }
+    
+    // Generate mediocre students (CGPA 2.0-2.99)
+    for (let i = 0; i < 15; i++) {
+      mockStudents.push({
+        id: `mediocre-${i}`,
+        name: `Mediocre Student ${i + 1}`,
+        email: `mediocre${i + 1}@example.com`,
+        academicDetails: {
+          cgpa: (2.0 + Math.random() * 0.99).toFixed(2) // Between 2.0 and 2.99
+        }
+      });
+    }
+    
+    // Generate low performing students (CGPA < 2.0)
+    for (let i = 0; i < 10; i++) {
+      mockStudents.push({
+        id: `low-${i}`,
+        name: `Low Performing Student ${i + 1}`,
+        email: `low${i + 1}@example.com`,
+        academicDetails: {
+          cgpa: (Math.random() * 1.99).toFixed(2) // Between 0 and 1.99
+        }
+      });
+    }
+    
+    return mockStudents;
+  };
+
+  // Classify students based on their CGPA
+  const classifyStudents = (students) => {
+    const outstanding = students.filter(s => s.academicDetails.cgpa >= 3.7);
+    const aboveAvg = students.filter(s => s.academicDetails.cgpa >= 3.0 && s.academicDetails.cgpa < 3.7);
+    const mediocre = students.filter(s => s.academicDetails.cgpa >= 2.0 && s.academicDetails.cgpa < 3.0);
+    const low = students.filter(s => s.academicDetails.cgpa < 2.0);
+    
+    return { outstanding, aboveAvg, mediocre, low };
+  };
+
+  // Randomly select students with the specified distribution
+  const selectRandomStudents = () => {
+    const classified = classifyStudents(students);
+    
+    // Filter out students who were assigned last time
+    const availableOutstanding = classified.outstanding.filter(s => !lastAssignedIds.includes(s.id));
+    const availableAboveAvg = classified.aboveAvg.filter(s => !lastAssignedIds.includes(s.id));
+    const availableMediocre = classified.mediocre.filter(s => !lastAssignedIds.includes(s.id));
+    const availableLow = classified.low.filter(s => !lastAssignedIds.includes(s.id));
+
+    // If not enough available students, fall back to all students in the category
+    const finalOutstanding = availableOutstanding.length >= 3 ? 
+      availableOutstanding : classified.outstanding;
+    const finalAboveAvg = availableAboveAvg.length >= 3 ? 
+      availableAboveAvg : classified.aboveAvg;
+    const finalMediocre = availableMediocre.length >= 2 ? 
+      availableMediocre : classified.mediocre;
+    const finalLow = availableLow.length >= 2 ? 
+      availableLow : classified.low;
+
+    // Shuffle and select students
+    const shuffle = (array) => [...array].sort(() => 0.5 - Math.random());
+    
+    const selectedOutstanding = shuffle(finalOutstanding).slice(0, 3);
+    const selectedAboveAvg = shuffle(finalAboveAvg).slice(0, 3);
+    const selectedMediocre = shuffle(finalMediocre).slice(0, 2);
+    const selectedLow = shuffle(finalLow).slice(0, 2);
+
+    const selectedStudents = [
+      ...selectedOutstanding,
+      ...selectedAboveAvg,
+      ...selectedMediocre,
+      ...selectedLow
+    ];
+
+    // Save the IDs of selected students to avoid selecting them next time
+    const selectedIds = selectedStudents.map(s => s.id);
+    setLastAssignedIds(selectedIds);
+    localStorage.setItem('lastAssignedIds', JSON.stringify(selectedIds));
+
+    return selectedStudents;
+  };
+
+  // Handle student assignment
+  const handleAssignStudents = () => {
+    const selectedStudents = selectRandomStudents();
+    setAssignedStudents(selectedStudents);
+    localStorage.setItem('assignedStudents', JSON.stringify(selectedStudents));
+  };
 
   // Handle preset selection
   const handleSelectPreset = (preset) => {
@@ -122,6 +257,7 @@ const ReportView = ({ mode = "admin" }) => {
     setCurrentForm({ ...preset });
     setIsCreatingNew(false);
     setViewingPublishedForm(false);
+    setShowRandomAssigner(false);
   };
 
   // Create a new preset
@@ -130,6 +266,7 @@ const ReportView = ({ mode = "admin" }) => {
     setSelectedPreset(null);
     setCurrentForm({ name: "New Form", questions: [] });
     setViewingPublishedForm(false);
+    setShowRandomAssigner(false);
   };
 
   // Add a new question to the form
@@ -280,7 +417,8 @@ const ReportView = ({ mode = "admin" }) => {
     setPublishedForm(currentForm);
     localStorage.setItem('publishedForm', JSON.stringify(currentForm));
     setViewingPublishedForm(true);
-    alert("Form published successfully! Students can now access it.");
+    setShowRandomAssigner(true);
+    alert("Form published successfully! Now you can assign it to students.");
   };
 
   // Handle student input change
@@ -367,6 +505,7 @@ const ReportView = ({ mode = "admin" }) => {
     setIsCreatingNew(false);
     setSelectedPreset(null);
     setEditingQuestion(null);
+    setShowRandomAssigner(false);
   };
 
   // View the currently published form
@@ -374,6 +513,7 @@ const ReportView = ({ mode = "admin" }) => {
     setViewingPublishedForm(true);
     setIsCreatingNew(false);
     setSelectedPreset(null);
+    setShowRandomAssigner(true);
   };
 
   // Unpublish the current form
@@ -382,6 +522,10 @@ const ReportView = ({ mode = "admin" }) => {
       localStorage.removeItem('publishedForm');
       setPublishedForm(null);
       setViewingPublishedForm(false);
+      setShowRandomAssigner(false);
+      setAssignedStudents([]);
+      localStorage.removeItem('assignedStudents');
+      localStorage.removeItem('lastAssignedIds');
       alert("Form has been unpublished.");
     }
   };
@@ -540,6 +684,66 @@ const ReportView = ({ mode = "admin" }) => {
     }
   };
 
+  // Render the Random Assigner component
+  const renderRandomAssigner = () => {
+    const classified = classifyStudents(students);
+    
+    return (
+      <div className="random-assigner">
+        <h3>Random Student Assignment</h3>
+        <p>
+          This tool will randomly select 10 students to receive the feedback form:
+          <br />
+          3 Outstanding (CGPA ≥ 3.7), 3 Above Average (3.0-3.69), 
+          2 Mediocre (2.0-2.99), and 2 Low (CGPA &lt; 2.0).
+        </p>
+        
+        <div className="student-counts">
+          <div className="count-item">
+            <span className="count-label">Outstanding:</span>
+            <span className="count-value">{classified.outstanding.length}</span>
+          </div>
+          <div className="count-item">
+            <span className="count-label">Above Average:</span>
+            <span className="count-value">{classified.aboveAvg.length}</span>
+          </div>
+          <div className="count-item">
+            <span className="count-label">Mediocre:</span>
+            <span className="count-value">{classified.mediocre.length}</span>
+          </div>
+          <div className="count-item">
+            <span className="count-label">Low:</span>
+            <span className="count-value">{classified.low.length}</span>
+          </div>
+        </div>
+
+        <button 
+          className="assign-btn"
+          onClick={handleAssignStudents}
+          disabled={assignedStudents.length > 0}
+        >
+          {assignedStudents.length > 0 ? 'Students Assigned' : 'Assign Random Students'}
+        </button>
+
+        {assignedStudents.length > 0 && (
+          <div className="assignment-success">
+            <p>Students have been successfully assigned to this feedback form.</p>
+            <div className="assignment-summary">
+              <h4>Assignment Status</h4>
+              <p>10 students have been randomly selected to receive this feedback form.</p>
+              <div className="student-count-info">
+                <div className="student-count-item">
+                  <span className="count-label">Total Students Selected:</span>
+                  <span className="count-value">{assignedStudents.length}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   // Render the Published Form Preview (in Admin mode)
   const renderPublishedFormPreview = () => (
     <div className="published-form-preview">
@@ -561,7 +765,15 @@ const ReportView = ({ mode = "admin" }) => {
         </button>
       </div>
       
+      {/* RandomAssigner component integration */}
+      {showRandomAssigner && (
+        <div className="random-assigner-container">
+          {renderRandomAssigner()}
+        </div>
+      )}
+      
       <div className="published-form-questions">
+        <h3 className="questions-section-title">Form Preview</h3>
         {publishedForm.questions.map((question, index) => (
           <div key={question.id} className="preview-question-item">
             <div className="preview-question-header">
@@ -755,6 +967,19 @@ const ReportView = ({ mode = "admin" }) => {
 
   // Render the Student view
   const renderStudentView = () => {
+    // Check if student is assigned to this form
+    const isAssigned = assignedStudents.some(s => s.id === 'current-student-id'); // Replace with actual student ID logic
+
+    if (!isAssigned) {
+      return (
+        <div className="report-student-view empty-state">
+          <div className="empty-icon">!</div>
+          <h2>No feedback forms assigned to you</h2>
+          <p>You haven't been selected to complete this feedback form.</p>
+        </div>
+      );
+    }
+
     if (!publishedForm) {
       return (
         <div className="report-student-view empty-state">
