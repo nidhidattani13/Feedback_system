@@ -430,3 +430,16 @@ input[disabled], textarea[disabled] {
 ::-webkit-scrollbar-thumb:hover {
   background: #555;
 }
+/* Add these styles to your AdminProfile.css file */
+
+.enrollment-badge {
+  display: inline-block;
+  background-color: #f1f1f1;
+  color: #555;
+  font-size: 0.85rem;
+  padding: 4px 8px;
+  border-radius: 4px;
+  margin-top: 8px;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+}

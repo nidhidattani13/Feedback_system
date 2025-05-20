@@ -251,29 +251,35 @@ const AdminDashboard = () => {
           <h2>Admin Dashboard</h2>
           <div className="header-controls">
             {userData && (
-              <div className="user-info-compact" onClick={() => setShowProfileModal(true)}>
-                <span>Welcome, {userData.name || "Admin"}</span>
-                <div className="department-badge">
-                  {userData.position || "Position"}
-                </div>
-                <div className="profile-icon">
-                  {userData.avatar ? (
-                    <img
-                      src={userData.avatar}
-                      alt="Profile"
-                      className="avatar-mini"
-                    />
-                  ) : (
-                    <div className="avatar-placeholder-mini">
-                      {userData.name
-                        .split(" ")
-                        .map((n) => n[0])
-                        .join("")}
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
+  <div 
+    className="user-info-compact" 
+    onClick={() => setShowProfileModal(true)}
+    style={{ cursor: 'pointer' }} // Add cursor style here
+  >
+    <div className="profile-info-container">
+      <span className="welcome-text">Welcome, {userData.name || "Admin"}</span>
+      <div className="department-badge">
+        {userData.position || "Position"}
+      </div>
+    </div>
+    <div className="profile-icon">
+      {userData.avatar ? (
+        <img
+          src={userData.avatar}
+          alt="Profile"
+          className="avatar-mini"
+        />
+      ) : (
+        <div className="avatar-placeholder-mini">
+          {userData.name
+            .split(" ")
+            .map((n) => n[0])
+            .join("")}
+        </div>
+      )}
+    </div>
+  </div>
+)}
             <button className="control-btn" onClick={handleSignout}>
               Sign Out
             </button>

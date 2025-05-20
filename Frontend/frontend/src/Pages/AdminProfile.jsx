@@ -10,6 +10,7 @@ const AdminProfile = ({ isOpen, onClose, initialData }) => {
     department: "",
     email: "",
     phone: "",
+    enrollmentNumber: "", // Added enrollment number field
     avatar: null,
     password:"",
   });
@@ -40,6 +41,7 @@ const AdminProfile = ({ isOpen, onClose, initialData }) => {
           department: data.department,
           email: data.email,
           phone: data.phone,
+          enrollmentNumber: data.enrollmentNumber || "", // Added enrollment number
           avatar: data.avatar_url || null,
         });
       } catch (error) {
@@ -238,6 +240,9 @@ const AdminProfile = ({ isOpen, onClose, initialData }) => {
                     <h3>{profileData.name}</h3>
                     <p className="position">{profileData.position}</p>
                     <div className="department-badge">{profileData.department}</div>
+                    {profileData.enrollmentNumber && (
+                      <div className="enrollment-badge">ID: {profileData.enrollmentNumber}</div>
+                    )}
                   </div>
                 </div>
 
@@ -294,6 +299,16 @@ const AdminProfile = ({ isOpen, onClose, initialData }) => {
                           />
                         </div>
                         <div className="form-group">
+                          <label>Faculty Enrollment Number</label>
+                          <input
+                            type="text"
+                            name="enrollmentNumber"
+                            value={profileData.enrollmentNumber}
+                            onChange={handleInputChange}
+                            placeholder="Enter faculty ID/enrollment number"
+                          />
+                        </div>
+                        <div className="form-group">
                           <label>Email</label>
                           <input
                             type="email"
@@ -313,18 +328,18 @@ const AdminProfile = ({ isOpen, onClose, initialData }) => {
                         </div>
 
                         {/* Add the password field here */}
-    {isEditing && !profileData.id && (
-      <div className="form-group">
-        <label>Password</label>
-        <input
-          type="password"
-          name="password"
-          value={profileData.password}
-          onChange={handleInputChange}
-          required
-        />
-      </div>
-    )}
+                        {isEditing && !profileData.id && (
+                          <div className="form-group">
+                            <label>Password</label>
+                            <input
+                              type="password"
+                              name="password"
+                              value={profileData.password}
+                              onChange={handleInputChange}
+                              required
+                            />
+                          </div>
+                        )}
                         
                         <div className="button-row">
                           <button 
@@ -355,6 +370,10 @@ const AdminProfile = ({ isOpen, onClose, initialData }) => {
                         <div className="info-row">
                           <div className="info-label">Department:</div>
                           <div className="info-value">{profileData.department}</div>
+                        </div>
+                        <div className="info-row">
+                          <div className="info-label">Enrollment Number:</div>
+                          <div className="info-value">{profileData.enrollmentNumber || "Not specified"}</div>
                         </div>
                         <div className="info-row">
                           <div className="info-label">Email:</div>

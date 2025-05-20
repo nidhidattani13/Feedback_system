@@ -855,3 +855,55 @@
   color: #999;
   background-color: transparent;
 }
+/* Add these styles to your AdminDashboard.css file */
+
+.user-info-compact {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background-color: rgba(255, 255, 255, 0.1);
+  padding: 8px 12px;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+}
+
+.user-info-compact:hover {
+  background-color: rgba(255, 255, 255, 0.2);
+}
+
+.profile-info-container {
+  display: flex;
+  flex-direction: column;
+}
+
+.welcome-text {
+  font-weight: 500;
+  margin-bottom: 4px;
+}
+
+.profile-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid #fff;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+}
+
+.avatar-mini, .avatar-placeholder-mini {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.avatar-placeholder-mini {
+  background-color: #3498db;
+  color: white;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
