@@ -14,6 +14,7 @@ const FacultyProfile = ({ isOpen, onClose, initialData }) => {
     bio: initialData?.bio || "Faculty member with expertise in computer science.",
     officeHours: initialData?.officeHours || "Mon-Wed 10:00-12:00",
     researchInterests: initialData?.researchInterests || "Artificial Intelligence, Machine Learning",
+    enrollmentId: initialData?.enrollmentId || "FAC-0000",
     avatar: initialData?.avatar || null,
   });
 
@@ -130,8 +131,6 @@ const FacultyProfile = ({ isOpen, onClose, initialData }) => {
   const handleAvatarUpload = (e) => {
     const file = e.target.files[0];
     if (file) {
-      // For demo purposes we'll just use URL.createObjectURL
-      // In a real app, you would upload to server
       setProfileData({
         ...profileData,
         avatar: URL.createObjectURL(file),
@@ -243,8 +242,17 @@ const FacultyProfile = ({ isOpen, onClose, initialData }) => {
                       </div>
 
                       {isEditing ? (
-                        // Edit mode form
                         <div className="form-grid">
+                          <div className="form-group">
+                            <label>Enrollment ID</label>
+                            <input
+                              type="text"
+                              name="enrollmentId"
+                              value={profileData.enrollmentId}
+                              onChange={handleInputChange}
+                              disabled
+                            />
+                          </div>
                           <div className="form-group">
                             <label>Full Name</label>
                             <input
@@ -326,8 +334,11 @@ const FacultyProfile = ({ isOpen, onClose, initialData }) => {
                           </div>
                         </div>
                       ) : (
-                        // Display mode
                         <div className="info-display">
+                          <div className="info-row">
+                            <div className="info-label">Enrollment ID:</div>
+                            <div className="info-value">{profileData.enrollmentId}</div>
+                          </div>
                           <div className="info-row">
                             <div className="info-label">Name:</div>
                             <div className="info-value">{profileData.name}</div>
