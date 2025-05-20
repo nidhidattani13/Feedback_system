@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import "../styles/AdminDashboard.css";
-import AdminProfile from "./AdminProfile"; // Import the AdminProfile component
+import AdminProfile from "./AdminProfile";
 
 const AdminDashboard = () => {
   const [subjects, setSubjects] = useState([]);
@@ -21,19 +21,7 @@ const AdminDashboard = () => {
   const [expandedFaculty, setExpandedFaculty] = useState(null);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [userData, setUserData] = useState(null);
-
-  // Signout function
-  const handleSignout = async () => {
-    try {
-      const { error } = await supabase.auth.signOut();
-      if (error) throw error;
-      localStorage.removeItem('userData');
-      window.location.href = '/login';
-    } catch (err) {
-      console.error('Signout error:', err);
-      alert('Error signing out. Please try again.');
-    }
-  };
+  const [showSignoutModal, setShowSignoutModal] = useState(false);
 
   // Sample admin data for the profile
   const adminData = {
@@ -159,7 +147,7 @@ const AdminDashboard = () => {
           id: savedNotice.id,
           date: savedNotice.date,
           title: savedNotice.title,
-          text: savedNotice.text || newNotice // Fallback to form input if text is missing
+          text: savedNotice.text || newNotice
         };
         
         setNotices([newNoticeForState, ...notices]);
@@ -175,7 +163,6 @@ const AdminDashboard = () => {
       }
     }
   };
-  
 
   const handleRemoveNotice = (index) => {
     const updatedNotices = [...notices];
@@ -239,9 +226,23 @@ const AdminDashboard = () => {
     }
   };
 
-  // Toggle profile modal
-  const toggleProfileModal = () => {
-    setShowProfileModal(!showProfileModal);
+  const handleSignout = () => {
+    setShowSignoutModal(true);
+  };
+
+  const confirmSignout = async () => {
+    try {
+      // In a real app, you would call your authentication service here
+      // For example with Supabase:
+      // const { error } = await supabase.auth.signOut();
+      // if (error) throw error;
+      
+      localStorage.removeItem('userData');
+      window.location.href = '/login';
+    } catch (err) {
+      console.error('Signout error:', err);
+      alert('Error signing out. Please try again.');
+    }
   };
 
   return (
@@ -251,37 +252,41 @@ const AdminDashboard = () => {
           <h2>Admin Dashboard</h2>
           <div className="header-controls">
             {userData && (
-  <div 
-    className="user-info-compact" 
-    onClick={() => setShowProfileModal(true)}
-    style={{ cursor: 'pointer' }} // Add cursor style here
-  >
-    <div className="profile-info-container">
-      <span className="welcome-text">Welcome, {userData.name || "Admin"}</span>
-      <div className="department-badge">
-        {userData.position || "Position"}
-      </div>
-    </div>
-    <div className="profile-icon">
-      {userData.avatar ? (
-        <img
-          src={userData.avatar}
-          alt="Profile"
-          className="avatar-mini"
-        />
-      ) : (
-        <div className="avatar-placeholder-mini">
-          {userData.name
-            .split(" ")
-            .map((n) => n[0])
-            .join("")}
-        </div>
-      )}
-    </div>
-  </div>
-)}
-            <button className="control-btn" onClick={handleSignout}>
-              Sign Out
+              <div 
+                className="user-info-compact" 
+                onClick={() => setShowProfileModal(true)}
+                style={{ cursor: 'pointer' }}
+              >
+                <div className="profile-info-container">
+                  <span className="welcome-text">Welcome, {userData.name || "Admin"}</span>
+                  <div className="department-badge">
+                    {userData.position || "Position"}
+                  </div>
+                </div>
+                <div className="profile-icon">
+                  {userData.avatar ? (
+                    <img
+                      src={userData.avatar}
+                      alt="Profile"
+                      className="avatar-mini"
+                    />
+                  ) : (
+                    <div className="avatar-placeholder-mini">
+                      {userData.name
+                        .split(" ")
+                        .map((n) => n[0])
+                        .join("")}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+            <button 
+              className="signout-btn" 
+              onClick={handleSignout}
+            >
+              <span className="signout-icon">⏻</span>
+              <span className="signout-text">Sign Out</span>
             </button>
           </div>
         </header>
@@ -527,7 +532,7 @@ const AdminDashboard = () => {
                     notices.map((notice, index) => (
                       <div key={index} className="notice-item">
                         <div className="notice-header">
-                          <div className="notice-date">{notice.date}</div>
+                          <div className="notice-date">{new Date(notice.date).toLocaleDateString()}</div>
                           <button 
                             className="notice-remove-btn"
                             onClick={() => handleRemoveNotice(index)}
@@ -536,7 +541,7 @@ const AdminDashboard = () => {
                           </button>
                         </div>
                         <h3 className="notice-title">{notice.title}</h3>
-                        <p className="notice-text">{notice.text}</p>
+                        <p className="notice-text">{notice.text || notice.content}</p>
                       </div>
                     ))
                   ) : (
@@ -656,6 +661,13 @@ const AdminDashboard = () => {
         )}
       </AnimatePresence>
 
+      {/* Profile Modal */}
+      <AdminProfile 
+        isOpen={showProfileModal}
+        onClose={() => setShowProfileModal(false)}
+        initialData={adminData}
+      />
+
       {/* Notice Modal */}
       <AnimatePresence>
         {showNoticeModal && (
@@ -705,12 +717,40 @@ const AdminDashboard = () => {
         )}
       </AnimatePresence>
 
-      {/* Profile Modal */}
-      <AdminProfile 
-        isOpen={showProfileModal}
-        onClose={() => setShowProfileModal(false)}
-        initialData={adminData}
-      />
+      {/* Signout Confirmation Modal */}
+      <AnimatePresence>
+        {showSignoutModal && (
+          <>
+            <motion.div
+              className="overlay"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowSignoutModal(false)}
+            />
+            <motion.div
+              className="modal-container signout-modal"
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+            >
+              <h2 className="modal-heading">Sign Out</h2>
+              <p className="signout-message">Are you sure you want to sign out?</p>
+              <div className="button-container">
+                <button onClick={confirmSignout} className="confirm-button signout-confirm">
+                  Yes, Sign Out
+                </button>
+                <button
+                  onClick={() => setShowSignoutModal(false)}
+                  className="cancel-button"
+                >
+                  Cancel
+                </button>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
