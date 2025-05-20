@@ -20,6 +20,11 @@ const StudentProfile = ({ isOpen, onClose, initialData }) => {
     sgpa: []
   });
 
+  // New state for editing academic data
+  const [isEditingAcademic, setIsEditingAcademic] = useState(false);
+  const [newCgpaEntry, setNewCgpaEntry] = useState({ year: "", value: "" });
+  const [newSgpaEntry, setNewSgpaEntry] = useState({ semester: "", year: "", value: "" });
+  
   const [isEditing, setIsEditing] = useState(false);
   const [isChangingPassword, setIsChangingPassword] = useState(false);
   const [passwordData, setPasswordData] = useState({
@@ -53,11 +58,13 @@ const StudentProfile = ({ isOpen, onClose, initialData }) => {
           avatar: data.avatar_url || null,
         });
         
-        // Set academic data
-        setAcademicData({
-          cgpa: data.cgpa || [],
-          sgpa: data.sgpa || []
-        });
+        // Set academic data if available
+        if (data.cgpa || data.sgpa) {
+          setAcademicData({
+            cgpa: data.cgpa || [],
+            sgpa: data.sgpa || []
+          });
+        }
       } catch (error) {
         console.error("Failed to fetch student data:", error.message);
         
@@ -74,21 +81,10 @@ const StudentProfile = ({ isOpen, onClose, initialData }) => {
           avatar: null,
         });
         
-        // Simulate academic data
+        // Initialize empty academic data
         setAcademicData({
-          cgpa: [
-            { year: "Year 1 (2021-22)", value: 8.7 },
-            { year: "Year 2 (2022-23)", value: 9.1 },
-            { year: "Year 3 (2023-24)", value: 9.4 }
-          ],
-          sgpa: [
-            { semester: "Semester 1", value: 8.5, year: "2021" },
-            { semester: "Semester 2", value: 8.9, year: "2022" },
-            { semester: "Semester 3", value: 9.0, year: "2022" },
-            { semester: "Semester 4", value: 9.2, year: "2023" },
-            { semester: "Semester 5", value: 9.3, year: "2023" },
-            { semester: "Semester 6", value: 9.5, year: "2024" }
-          ]
+          cgpa: [],
+          sgpa: []
         });
       }
     };
@@ -103,6 +99,7 @@ const StudentProfile = ({ isOpen, onClose, initialData }) => {
     if (!isOpen) {
       setIsEditing(false);
       setIsChangingPassword(false);
+      setIsEditingAcademic(false);
       setPasswordError("");
       setSaveSuccess(false);
       setActiveTab("personal");
@@ -111,6 +108,8 @@ const StudentProfile = ({ isOpen, onClose, initialData }) => {
         newPassword: "",
         confirmPassword: "",
       });
+      setNewCgpaEntry({ year: "", value: "" });
+      setNewSgpaEntry({ semester: "", year: "", value: "" });
     }
   }, [isOpen]);
 
@@ -196,12 +195,111 @@ const StudentProfile = ({ isOpen, onClose, initialData }) => {
     }
   };
 
+  // Handle CGPA input change
+  const handleCgpaInputChange = (e) => {
+    const { name, value } = e.target;
+    setNewCgpaEntry(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  // Handle SGPA input change
+  const handleSgpaInputChange = (e) => {
+    const { name, value } = e.target;
+    setNewSgpaEntry(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  // Add new CGPA entry
+  const addCgpaEntry = () => {
+    // Validate inputs
+    if (!newCgpaEntry.year || !newCgpaEntry.value) {
+      alert("Year and CGPA value are required.");
+      return;
+    }
+    
+    const cgpaValue = parseFloat(newCgpaEntry.value);
+    if (isNaN(cgpaValue) || cgpaValue < 0 || cgpaValue > 10) {
+      alert("Please enter a valid CGPA value between 0 and 10.");
+      return;
+    }
+
+    setAcademicData(prev => ({
+      ...prev,
+      cgpa: [...prev.cgpa, { ...newCgpaEntry, value: cgpaValue }]
+    }));
+    
+    // Reset input
+    setNewCgpaEntry({ year: "", value: "" });
+  };
+
+  // Add new SGPA entry
+  const addSgpaEntry = () => {
+    // Validate inputs
+    if (!newSgpaEntry.semester || !newSgpaEntry.year || !newSgpaEntry.value) {
+      alert("Semester, Year, and SGPA value are required.");
+      return;
+    }
+    
+    const sgpaValue = parseFloat(newSgpaEntry.value);
+    if (isNaN(sgpaValue) || sgpaValue < 0 || sgpaValue > 10) {
+      alert("Please enter a valid SGPA value between 0 and 10.");
+      return;
+    }
+
+    setAcademicData(prev => ({
+      ...prev,
+      sgpa: [...prev.sgpa, { ...newSgpaEntry, value: sgpaValue }]
+    }));
+    
+    // Reset input
+    setNewSgpaEntry({ semester: "", year: "", value: "" });
+  };
+
+  // Remove CGPA entry
+  const removeCgpaEntry = (index) => {
+    setAcademicData(prev => ({
+      ...prev,
+      cgpa: prev.cgpa.filter((_, i) => i !== index)
+    }));
+  };
+
+  // Remove SGPA entry
+  const removeSgpaEntry = (index) => {
+    setAcademicData(prev => ({
+      ...prev,
+      sgpa: prev.sgpa.filter((_, i) => i !== index)
+    }));
+  };
+
+  // Save academic data
+  const saveAcademicData = () => {
+    // Here you would typically send the data to your backend
+    // For now, just simulate success
+    setTimeout(() => {
+      setIsEditingAcademic(false);
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 3000);
+    }, 800);
+  };
+
   // Format CGPA/SGPA with coloring based on value
   const getGradeColor = (value) => {
     if (value >= 9.0) return "excellent-grade";
     if (value >= 8.0) return "good-grade";
     if (value >= 7.0) return "average-grade";
     return "below-average-grade";
+  };
+
+  // Calculate current overall CGPA
+  const calculateOverallCGPA = () => {
+    if (academicData.cgpa.length === 0) return null;
+    
+    const total = academicData.cgpa.reduce((sum, item) => sum + item.value, 0);
+    return (total / academicData.cgpa.length).toFixed(2);
   };
 
   if (!isOpen) return null;
@@ -508,30 +606,96 @@ const StudentProfile = ({ isOpen, onClose, initialData }) => {
                     <div className="profile-section academic-section">
                       <div className="section-header">
                         <h3>Academic Records</h3>
+                        {!isEditingAcademic ? (
+                          <button 
+                            className="edit-btn"
+                            onClick={() => setIsEditingAcademic(true)}
+                          >
+                            Edit
+                          </button>
+                        ) : (
+                          <button 
+                            className="confirm-button"
+                            onClick={saveAcademicData}
+                          >
+                            Save
+                          </button>
+                        )}
                       </div>
                       
                       {/* CGPA Section */}
                       <div className="academic-block">
                         <h4>Cumulative Grade Point Average (CGPA)</h4>
-                        <div className="grades-container">
-                          {academicData.cgpa.map((item, index) => (
-                            <div key={`cgpa-${index}`} className="grade-card">
-                              <div className="grade-year">{item.year}</div>
-                              <div className={`grade-value ${getGradeColor(item.value)}`}>
-                                {item.value.toFixed(2)}
+                        
+                        {isEditingAcademic && (
+                          <div className="add-grade-form">
+                            <div className="form-grid">
+                              <div className="form-group">
+                                <label>Academic Year</label>
+                                <input
+                                  type="text"
+                                  name="year"
+                                  placeholder="e.g., Year 1 (2021-22)"
+                                  value={newCgpaEntry.year}
+                                  onChange={handleCgpaInputChange}
+                                />
+                              </div>
+                              <div className="form-group">
+                                <label>CGPA Value</label>
+                                <input
+                                  type="number"
+                                  name="value"
+                                  placeholder="e.g., 8.5"
+                                  min="0"
+                                  max="10"
+                                  step="0.01"
+                                  value={newCgpaEntry.value}
+                                  onChange={handleCgpaInputChange}
+                                />
+                              </div>
+                              <div className="form-group">
+                                <button 
+                                  className="add-button"
+                                  onClick={addCgpaEntry}
+                                >
+                                  Add CGPA Entry
+                                </button>
                               </div>
                             </div>
-                          ))}
-                        </div>
+                          </div>
+                        )}
+                        
+                        {academicData.cgpa.length > 0 ? (
+                          <div className="grades-container">
+                            {academicData.cgpa.map((item, index) => (
+                              <div key={`cgpa-${index}`} className="grade-card">
+                                <div className="grade-year">{item.year}</div>
+                                <div className={`grade-value ${getGradeColor(item.value)}`}>
+                                  {parseFloat(item.value).toFixed(2)}
+                                </div>
+                                {isEditingAcademic && (
+                                  <button 
+                                    className="remove-btn"
+                                    onClick={() => removeCgpaEntry(index)}
+                                  >
+                                    Remove
+                                  </button>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="empty-state">
+                            <p>No CGPA records added yet. {isEditingAcademic ? 'Use the form above to add your CGPA.' : 'Click Edit to add your CGPA records.'}</p>
+                          </div>
+                        )}
                         
                         {/* Current Overall CGPA */}
                         {academicData.cgpa.length > 0 && (
                           <div className="current-cgpa">
                             <span>Current Overall CGPA:</span>
-                            <span className={`grade-value ${getGradeColor(
-                              academicData.cgpa[academicData.cgpa.length - 1].value
-                            )}`}>
-                              {academicData.cgpa[academicData.cgpa.length - 1].value.toFixed(2)}
+                            <span className={`grade-value ${getGradeColor(calculateOverallCGPA())}`}>
+                              {calculateOverallCGPA()}
                             </span>
                           </div>
                         )}
@@ -540,22 +704,85 @@ const StudentProfile = ({ isOpen, onClose, initialData }) => {
                       {/* SGPA Section */}
                       <div className="academic-block">
                         <h4>Semester Grade Point Average (SGPA)</h4>
-                        <div className="grades-container">
-                          {academicData.sgpa.map((item, index) => (
-                            <div key={`sgpa-${index}`} className="grade-card">
-                              <div className="grade-info">
-                                <div className="grade-semester">{item.semester}</div>
-                                <div className="grade-year-small">{item.year}</div>
+                        
+                        {isEditingAcademic && (
+                          <div className="add-grade-form">
+                            <div className="form-grid">
+                              <div className="form-group">
+                                <label>Semester</label>
+                                <input
+                                  type="text"
+                                  name="semester"
+                                  placeholder="e.g., Semester 1"
+                                  value={newSgpaEntry.semester}
+                                  onChange={handleSgpaInputChange}
+                                />
                               </div>
-                              <div className={`grade-value ${getGradeColor(item.value)}`}>
-                                {item.value.toFixed(2)}
+                              <div className="form-group">
+                                <label>Academic Year</label>
+                                <input
+                                  type="text"
+                                  name="year"
+                                  placeholder="e.g., 2021"
+                                  value={newSgpaEntry.year}
+                                  onChange={handleSgpaInputChange}
+                                />
+                              </div>
+                              <div className="form-group">
+                                <label>SGPA Value</label>
+                                <input
+                                  type="number"
+                                  name="value"
+                                  placeholder="e.g., 8.5"
+                                  min="0"
+                                  max="10"
+                                  step="0.01"
+                                  value={newSgpaEntry.value}
+                                  onChange={handleSgpaInputChange}
+                                />
+                              </div>
+                              <div className="form-group">
+                                <button 
+                                  className="add-button"
+                                  onClick={addSgpaEntry}
+                                >
+                                  Add SGPA Entry
+                                </button>
                               </div>
                             </div>
-                          ))}
-                        </div>
+                          </div>
+                        )}
+                        
+                        {academicData.sgpa.length > 0 ? (
+                          <div className="grades-container">
+                            {academicData.sgpa.map((item, index) => (
+                              <div key={`sgpa-${index}`} className="grade-card">
+                                <div className="grade-info">
+                                  <div className="grade-semester">{item.semester}</div>
+                                  <div className="grade-year-small">{item.year}</div>
+                                </div>
+                                <div className={`grade-value ${getGradeColor(item.value)}`}>
+                                  {parseFloat(item.value).toFixed(2)}
+                                </div>
+                                {isEditingAcademic && (
+                                  <button 
+                                    className="remove-btn"
+                                    onClick={() => removeSgpaEntry(index)}
+                                  >
+                                    Remove
+                                  </button>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="empty-state">
+                            <p>No SGPA records added yet. {isEditingAcademic ? 'Use the form above to add your SGPA.' : 'Click Edit to add your SGPA records.'}</p>
+                          </div>
+                        )}
                       </div>
                       
-                      {/* Semester-wise Performance Chart would go here */}
+                      {/* Grade Scale Legend */}
                       <div className="performance-note">
                         <div className="note-header">Grade Scale</div>
                         <div className="grade-scales">
@@ -565,6 +792,23 @@ const StudentProfile = ({ isOpen, onClose, initialData }) => {
                           <span className="grade-scale below-average-grade">&lt; 7.0: Below Average</span>
                         </div>
                       </div>
+                      
+                      {isEditingAcademic && (
+                        <div className="button-row mt-4">
+                          <button 
+                            className="cancel-button"
+                            onClick={() => setIsEditingAcademic(false)}
+                          >
+                            Cancel
+                          </button>
+                          <button 
+                            className="confirm-button"
+                            onClick={saveAcademicData}
+                          >
+                            Save Academic Data
+                          </button>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
