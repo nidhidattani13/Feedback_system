@@ -11,7 +11,9 @@ const FacultyProfile = ({ isOpen, onClose, initialData }) => {
     phone: initialData?.phone || "+1 (555) 123-4567",
     office: initialData?.office || "Building A, Room 101",
     courses: initialData?.courses || "CS101, CS202, CS350",
-    bio: initialData?.bio || "Faculty member with expertise in computer science and related fields.",
+    bio: initialData?.bio || "Faculty member with expertise in computer science.",
+    officeHours: initialData?.officeHours || "Mon-Wed 10:00-12:00",
+    researchInterests: initialData?.researchInterests || "Artificial Intelligence, Machine Learning",
     avatar: initialData?.avatar || null,
   });
 
@@ -423,11 +425,11 @@ const FacultyProfile = ({ isOpen, onClose, initialData }) => {
                         <div className="info-display">
                           <div className="info-row">
                             <div className="info-label">Office Hours:</div>
-                            <div className="info-value">{profileData.officeHours}</div>
+                            <div className="info-value">{profileData.officeHours || "Not specified"}</div>
                           </div>
                           <div className="info-row span-2">
                             <div className="info-label">Research Interests:</div>
-                            <div className="info-value">{profileData.researchInterests}</div>
+                            <div className="info-value">{profileData.researchInterests || "Not specified"}</div>
                           </div>
                           
                           <div className="info-row span-2">

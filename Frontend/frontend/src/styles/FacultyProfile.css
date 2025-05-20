@@ -1,6 +1,6 @@
-/* Apple Vision Pro / Music Enhancements for Faculty Profile */
+/* Faculty Profile - Apple Vision Pro / Music Inspired Design */
 :root {
-  /* Refined color palette inspired by Apple Vision Pro and Apple Music */
+  /* Color palette */
   --bg-primary: #000000;
   --bg-secondary: #0c0c0c;
   --bg-tertiary: #161616;
@@ -9,7 +9,7 @@
   --bg-card: #1c1c1e;
   --bg-backdrop: rgba(0, 0, 0, 0.7);
   
-  /* Enhanced glass morphism effects */
+  /* Glass morphism */
   --glass-bg: rgba(25, 25, 27, 0.85);
   --glass-border: rgba(255, 255, 255, 0.08);
   --glass-highlight: rgba(255, 255, 255, 0.12);
@@ -19,18 +19,18 @@
   --text-secondary: rgba(255, 255, 255, 0.8);
   --text-muted: rgba(255, 255, 255, 0.55);
   
-  /* Faculty-specific accent colors */
-  --accent-color: #ff375f; /* Different from student to distinguish faculty */
+  /* Faculty accent colors */
+  --accent-color: #ff375f;
   --accent-color-hover: #e6294e;
   --accent-color-light: rgba(255, 55, 95, 0.1);
   --accent-color-medium: rgba(255, 55, 95, 0.3);
   
-  /* Status colors - refined to match Apple aesthetics */
+  /* Status colors */
   --success-color: #30d158;
   --warning-color: #ff9f0a;
   --error-color: #ff453a;
   
-  /* Refined border radii - more consistent with Apple */
+  /* Border radii */
   --border-radius-xl: 12px;
   --border-radius-lg: 10px;
   --border-radius: 8px;
@@ -48,9 +48,9 @@
   --shadow-lg: 0 12px 36px rgba(0, 0, 0, 0.5);
 }
 
-/* Apply global font family */
+/* Base styles */
 body {
-  font-family: var(--font-family);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
 }
 
 /* Profile Modal and Overlay */
@@ -61,18 +61,29 @@ body {
   right: 0;
   bottom: 0;
   background-color: var(--bg-backdrop);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
   z-index: 1000;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
+/* Add backdrop-filter with fallback for non-supporting browsers */
+@supports (backdrop-filter: blur(20px)) {
+  .profile-overlay {
+    backdrop-filter: blur(20px);
+  }
+}
+
+@supports (-webkit-backdrop-filter: blur(20px)) {
+  .profile-overlay {
+    -webkit-backdrop-filter: blur(20px);
+  }
+}
+
 .profile-modal {
   position: fixed;
   top: 5%;
-  left: 50%;
+  left: 13%;
   transform: translateX(-50%);
   width: 90%;
   max-width: 1000px;
@@ -92,7 +103,7 @@ body {
   background: linear-gradient(160deg, #0c0c0c, #000000);
 }
 
-/* Custom scrollbar */
+/* Custom scrollbar with browser compatibility */
 .profile-modal::-webkit-scrollbar {
   width: 8px;
 }
@@ -110,6 +121,12 @@ body {
   background: rgba(255, 255, 255, 0.25);
 }
 
+/* Fallback scrolling for Firefox */
+.profile-modal {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+}
+
 /* Header */
 .profile-header {
   padding: 24px 28px;
@@ -123,8 +140,19 @@ body {
   z-index: 10;
   border-top-left-radius: var(--border-radius-xl);
   border-top-right-radius: var(--border-radius-xl);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+}
+
+/* Add backdrop-filter with fallback */
+@supports (backdrop-filter: blur(10px)) {
+  .profile-header {
+    backdrop-filter: blur(10px);
+  }
+}
+
+@supports (-webkit-backdrop-filter: blur(10px)) {
+  .profile-header {
+    -webkit-backdrop-filter: blur(10px);
+  }
 }
 
 .profile-header h2 {
@@ -147,6 +175,8 @@ body {
   justify-content: center;
   transition: all var(--transition-fast) var(--ease-out-expo);
   cursor: pointer;
+  font-size: 18px;
+  line-height: 1;
 }
 
 .close-btn:hover {
@@ -175,18 +205,24 @@ body {
   gap: 20px;
 }
 
+/* Card styling shared properties */
+.avatar-section,
+.profile-info-brief,
+.profile-tabs,
+.profile-section {
+  border-radius: var(--border-radius-lg);
+  border: 1px solid var(--glass-border);
+  transition: transform var(--transition-speed) var(--ease-out-expo),
+              box-shadow var(--transition-speed) var(--ease-out-expo);
+}
+
 .avatar-section {
   display: flex;
   flex-direction: column;
   align-items: center;
   background-color: var(--bg-card);
-  border-radius: var(--border-radius-lg);
   padding: 28px 24px;
   text-align: center;
-  border: 1px solid var(--glass-border);
-  backdrop-filter: blur(5px);
-  -webkit-backdrop-filter: blur(5px);
-  transition: transform var(--transition-speed) var(--ease-out-expo);
   box-shadow: var(--shadow-sm);
 }
 
@@ -243,8 +279,19 @@ body {
   font-size: 14px;
   font-weight: 500;
   transition: all var(--transition-speed) var(--ease-out-expo);
-  backdrop-filter: blur(5px);
-  -webkit-backdrop-filter: blur(5px);
+}
+
+/* Add backdrop-filter with fallback */
+@supports (backdrop-filter: blur(5px)) {
+  .upload-btn {
+    backdrop-filter: blur(5px);
+  }
+}
+
+@supports (-webkit-backdrop-filter: blur(5px)) {
+  .upload-btn {
+    -webkit-backdrop-filter: blur(5px);
+  }
 }
 
 .upload-btn:hover {
@@ -258,10 +305,8 @@ input[type="file"] {
 
 .profile-info-brief {
   background-color: var(--bg-card);
-  border-radius: var(--border-radius-lg);
   padding: 20px;
   text-align: center;
-  border: 1px solid var(--glass-border);
 }
 
 .profile-info-brief h3 {
@@ -272,7 +317,7 @@ input[type="file"] {
   color: var(--text-primary);
 }
 
-.faculty-id {
+.position {
   color: var(--text-secondary);
   font-size: 15px;
   margin-bottom: 16px;
@@ -287,9 +332,20 @@ input[type="file"] {
   font-size: 14px;
   font-weight: 500;
   display: inline-block;
-  backdrop-filter: blur(5px);
-  -webkit-backdrop-filter: blur(5px);
   transition: transform var(--transition-speed) var(--ease-out-expo);
+}
+
+/* Add backdrop-filter with fallback */
+@supports (backdrop-filter: blur(5px)) {
+  .department-badge {
+    backdrop-filter: blur(5px);
+  }
+}
+
+@supports (-webkit-backdrop-filter: blur(5px)) {
+  .department-badge {
+    -webkit-backdrop-filter: blur(5px);
+  }
 }
 
 .department-badge:hover {
@@ -301,9 +357,7 @@ input[type="file"] {
   display: flex;
   gap: 8px;
   background-color: var(--bg-card);
-  border-radius: var(--border-radius-lg);
   padding: 16px;
-  border: 1px solid var(--glass-border);
 }
 
 .tab-btn {
@@ -339,11 +393,7 @@ input[type="file"] {
 
 .profile-section {
   background-color: var(--bg-secondary);
-  border-radius: var(--border-radius-lg);
   padding: 24px;
-  border: 1px solid var(--glass-border);
-  transition: transform var(--transition-speed) var(--ease-out-expo),
-              box-shadow var(--transition-speed) var(--ease-out-expo);
 }
 
 .profile-section:hover {
@@ -368,19 +418,27 @@ input[type="file"] {
   color: var(--text-primary);
 }
 
+/* Button styles */
+.edit-btn,
+.upload-btn,
+.cancel-button,
+.confirm-button,
+.save-button {
+  border-radius: var(--border-radius-sm);
+  cursor: pointer;
+  font-size: 14px;
+  transition: all var(--transition-speed) var(--ease-out-expo);
+}
+
 .edit-btn {
   background: rgba(255, 55, 95, 0.1);
   color: var(--accent-color);
   border: none;
   padding: 8px 16px;
-  border-radius: var(--border-radius-sm);
-  cursor: pointer;
-  font-size: 14px;
   font-weight: 500;
   display: flex;
   align-items: center;
   gap: 8px;
-  transition: all var(--transition-speed) var(--ease-out-expo);
 }
 
 .edit-btn:hover {
@@ -413,6 +471,7 @@ input[type="file"] {
   letter-spacing: -0.01em;
 }
 
+/* Form input styles */
 .form-group input,
 .form-group textarea,
 .form-group select {
@@ -458,11 +517,7 @@ input[type="file"] {
   color: var(--text-secondary);
   border: 1px solid var(--glass-border);
   padding: 12px 24px;
-  border-radius: var(--border-radius);
-  cursor: pointer;
-  font-size: 14px;
   font-weight: 500;
-  transition: all var(--transition-speed) var(--ease-out-expo);
 }
 
 .cancel-button:hover {
@@ -475,11 +530,7 @@ input[type="file"] {
   color: white;
   border: none;
   padding: 12px 24px;
-  border-radius: var(--border-radius);
-  cursor: pointer;
-  font-size: 14px;
   font-weight: 600;
-  transition: all var(--transition-speed) var(--ease-out-expo);
   box-shadow: 0 2px 10px rgba(255, 55, 95, 0.3);
 }
 
@@ -563,9 +614,8 @@ input[type="file"] {
 }
 
 /* Notifications */
-.success-message {
-  background: rgba(48, 209, 88, 0.1);
-  color: var(--success-color);
+.success-message,
+.error-message {
   padding: 16px;
   border-radius: var(--border-radius);
   margin-bottom: 24px;
@@ -573,22 +623,36 @@ input[type="file"] {
   align-items: center;
   justify-content: center;
   font-weight: 500;
-  backdrop-filter: blur(5px);
-  -webkit-backdrop-filter: blur(5px);
-  border: 1px solid rgba(48, 209, 88, 0.2);
   animation: fadeSlideDown 0.5s var(--ease-out-expo);
+  border-width: 1px;
+  border-style: solid;
+}
+
+.success-message {
+  background: rgba(48, 209, 88, 0.1);
+  color: var(--success-color);
+  border-color: rgba(48, 209, 88, 0.2);
 }
 
 .error-message {
   background: rgba(255, 69, 58, 0.1);
   color: var(--error-color);
-  padding: 16px;
-  border-radius: var(--border-radius);
-  margin-bottom: 24px;
-  backdrop-filter: blur(5px);
-  -webkit-backdrop-filter: blur(5px);
-  border: 1px solid rgba(255, 69, 58, 0.2);
-  animation: fadeSlideDown 0.5s var(--ease-out-expo);
+  border-color: rgba(255, 69, 58, 0.2);
+}
+
+/* Add backdrop-filter with fallback */
+@supports (backdrop-filter: blur(5px)) {
+  .success-message,
+  .error-message {
+    backdrop-filter: blur(5px);
+  }
+}
+
+@supports (-webkit-backdrop-filter: blur(5px)) {
+  .success-message,
+  .error-message {
+    -webkit-backdrop-filter: blur(5px);
+  }
 }
 
 /* Password specific styles */
@@ -602,11 +666,7 @@ input[type="file"] {
   color: white;
   border: none;
   padding: 10px 24px;
-  border-radius: var(--border-radius);
-  cursor: pointer;
-  font-size: 14px;
   font-weight: 500;
-  transition: all var(--transition-speed) var(--ease-out-expo);
   box-shadow: 0 2px 10px rgba(255, 55, 95, 0.3);
   max-width: 200px;
   width: auto;
@@ -655,8 +715,8 @@ input[type="file"] {
   animation: fadeIn 0.5s var(--ease-out-expo);
 }
 
-/* Responsive design */
-@media (max-width: 1000px) {
+/* Responsive design - improved breakpoints */
+@media (max-width: 1024px) {
   .profile-grid {
     grid-template-columns: 1fr;
   }
@@ -678,6 +738,12 @@ input[type="file"] {
     grid-column: span 2;
     flex-direction: row;
     overflow-x: auto;
+    padding: 12px;
+  }
+  
+  .tab-btn {
+    white-space: nowrap;
+    padding: 10px 16px;
   }
 }
 
@@ -685,23 +751,43 @@ input[type="file"] {
   .profile-modal {
     width: 95%;
     max-height: 90vh;
+    top: 2%;
   }
   
   .profile-header {
     padding: 20px;
   }
   
-  .form-grid,
-  .info-display {
+  .profile-content {
+    padding: 20px;
+  }
+  
+  .form-grid {
     grid-template-columns: 1fr;
+    gap: 16px;
   }
   
   .button-row {
-    flex-direction: column;
+    flex-direction: column-reverse;
+    gap: 12px;
   }
   
   .button-row button {
     width: 100%;
+  }
+  
+  .info-row {
+    flex-direction: column;
+    gap: 8px;
+  }
+  
+  .info-label {
+    width: 100%;
+    font-weight: 600;
+  }
+  
+  .form-group.span-2 {
+    grid-column: auto;
   }
 }
 
@@ -725,6 +811,7 @@ input[type="file"] {
     height: 100%;
     max-height: 100vh;
     border-radius: 0;
+    top: 0;
   }
   
   .profile-header {
@@ -738,9 +825,19 @@ input[type="file"] {
   .profile-section {
     padding: 20px;
   }
+  
+  .department-badge {
+    padding: 6px 12px;
+    font-size: 13px;
+  }
+  
+  .info-value, 
+  .info-label {
+    font-size: 14px;
+  }
 }
 
-/* Scrollbar styles */
+/* Global scrollbar styles */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
@@ -758,4 +855,10 @@ input[type="file"] {
 
 ::-webkit-scrollbar-thumb:hover {
   background: #555;
+}
+
+/* Fallback scrolling for Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #444 var(--bg-tertiary);
 }
