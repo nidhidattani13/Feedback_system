@@ -1,11 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import '../styles/ReportView.css';
-<<<<<<< HEAD
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-=======
 import ReportAccess from './ReportAccess';
->>>>>>> ae4e10fbc3cef3efa44cc121e1e7211d25e55ad9
 
 // Default preset questions for quick form creation
 const DEFAULT_PRESET = {
@@ -89,17 +86,13 @@ const ADDITIONAL_PRESETS = [
 ];
 
 const ReportView = ({ mode = "admin" }) => {
-<<<<<<< HEAD
   const navigate = useNavigate();
   const API_URL = 'http://localhost:5000/api/feedback';
   // States for managing form creation and display
-=======
-  // States for managing view navigation
-  const [currentView, setCurrentView] = useState('presets'); // 'presets', 'builder', 'published'
-  const [activeTab, setActiveTab] = useState('forms'); // 'forms', 'responses'
+  const [currentView, setCurrentView] = useState('presets');
+  const [activeTab, setActiveTab] = useState('forms');
   
   // Form management states
->>>>>>> ae4e10fbc3cef3efa44cc121e1e7211d25e55ad9
   const [presets, setPresets] = useState([]);
   const [currentForm, setCurrentForm] = useState({ name: "", questions: [] });
   const [publishedForm, setPublishedForm] = useState(null);
@@ -115,14 +108,6 @@ const ReportView = ({ mode = "admin" }) => {
   const [assignedStudents, setAssignedStudents] = useState([]);
   const [lastAssignedIds, setLastAssignedIds] = useState([]);
 
-<<<<<<< HEAD
-  // Load presets and published form from database on component mount
-  useEffect(() => {
-    // Load presets from database
-    fetchPresets();
-
-    // Load mock student data
-=======
   // Animation states
   const [transitioning, setTransitioning] = useState(false);
   const [transitionDirection, setTransitionDirection] = useState('forward');
@@ -143,7 +128,10 @@ const ReportView = ({ mode = "admin" }) => {
       setPublishedForm(JSON.parse(savedPublishedForm));
     }
     
->>>>>>> ae4e10fbc3cef3efa44cc121e1e7211d25e55ad9
+    // Load presets from database
+    fetchPresets();
+
+    // Load mock student data
     const mockStudents = loadMockStudents();
     setStudents(mockStudents);
     
@@ -452,23 +440,6 @@ const ReportView = ({ mode = "admin" }) => {
       return;
     }
 
-<<<<<<< HEAD
-    try {
-      const response = await axios.post(`${API_URL}/preset`, {
-        title: currentForm.name,
-        questions: currentForm.questions,
-        created_by: localStorage.getItem('userData')?.id
-      });
-      
-      // Update presets list
-      fetchPresets();
-      
-      // Show success message
-      alert('Form preset saved successfully!');
-    } catch (error) {
-      console.error('Error saving preset:', error);
-      alert('Error saving preset. Please try again.');
-=======
     let updatedPresets;
     const existingPresetIndex = presets.findIndex(p => p.name === currentForm.name);
 
@@ -477,7 +448,6 @@ const ReportView = ({ mode = "admin" }) => {
       updatedPresets[existingPresetIndex] = { ...currentForm };
     } else {
       updatedPresets = [...presets, currentForm];
->>>>>>> ae4e10fbc3cef3efa44cc121e1e7211d25e55ad9
     }
   };
 
@@ -511,28 +481,10 @@ const ReportView = ({ mode = "admin" }) => {
       return;
     }
 
-<<<<<<< HEAD
-    try {
-      const response = await axios.post(`${API_URL}/form`, {
-        title: currentForm.name,
-        questions: currentForm.questions,
-        created_by: localStorage.getItem('userData')?.id
-      });
-      
-      setPublishedForm(response.data);
-      setViewingPublishedForm(true);
-      setShowRandomAssigner(true);
-      alert("Form published successfully! Now you can assign it to students.");
-    } catch (error) {
-      console.error('Error publishing form:', error);
-      alert('Error publishing form. Please try again.');
-    }
-=======
     setPublishedForm(currentForm);
     localStorage.setItem('publishedForm', JSON.stringify(currentForm));
     navigateTo('published');
     alert("Form published successfully! Now you can assign it to students.");
->>>>>>> ae4e10fbc3cef3efa44cc121e1e7211d25e55ad9
   };
 
   // Handle student input change
@@ -560,12 +512,7 @@ const ReportView = ({ mode = "admin" }) => {
   };
 
   // Submit student responses
-<<<<<<< HEAD
-  const handleSubmitResponses = async () => {
-    // Check if all questions are answered
-=======
   const handleSubmitResponses = () => {
->>>>>>> ae4e10fbc3cef3efa44cc121e1e7211d25e55ad9
     const unansweredQuestions = publishedForm.questions.filter(
       q => studentResponses[q.id] === undefined || 
            (typeof studentResponses[q.id] === 'string' && studentResponses[q.id].trim() === "")
@@ -576,21 +523,6 @@ const ReportView = ({ mode = "admin" }) => {
       return;
     }
 
-<<<<<<< HEAD
-    try {
-      const response = await axios.post(`${API_URL}/response`, {
-        form_id: publishedForm.id,
-        responses: studentResponses,
-        student_id: localStorage.getItem('userData')?.id
-      });
-      
-      setSubmitted(true);
-      alert('Feedback submitted successfully!');
-    } catch (error) {
-      console.error('Error submitting feedback:', error);
-      alert('Error submitting feedback. Please try again.');
-    }
-=======
     const allResponses = JSON.parse(localStorage.getItem('studentResponses') || '[]');
     const newResponse = {
       id: Date.now(),
@@ -601,7 +533,6 @@ const ReportView = ({ mode = "admin" }) => {
     
     localStorage.setItem('studentResponses', JSON.stringify([...allResponses, newResponse]));
     setSubmitted(true);
->>>>>>> ae4e10fbc3cef3efa44cc121e1e7211d25e55ad9
   };
 
   // Reset the form after submission
@@ -1132,185 +1063,8 @@ const ReportView = ({ mode = "admin" }) => {
         
         {activeTab === 'forms' ? renderTabContent() : <ReportAccess publishedForm={publishedForm} />}
       </div>
-<<<<<<< HEAD
-      
-      {/* Show Published Form First */}
-      {publishedForm && viewingPublishedForm && renderPublishedFormPreview()}
-      
-      {/* Show Form List or Form Builder */}
-      {!viewingPublishedForm && !isCreatingNew && !selectedPreset && (
-        <div className="preset-section">
-          <div className="section-header">
-            <h2>Select a Preset or Create New</h2>
-            <div className="section-actions">
-              {publishedForm && (
-                <button className="view-published-btn" onClick={handleViewPublishedForm}>
-                  View Published Form
-                </button>
-              )}
-              <button className="create-new-btn" onClick={handleCreateNew}>Create New Form</button>
-            </div>
-          </div>
-          
-          <div className="preset-grid">
-            {presets.map((preset, index) => (
-              <div 
-                key={index} 
-                className="preset-card" 
-                onClick={() => handleSelectPreset(preset)}
-              >
-                <div className="preset-card-content">
-                  <h3>{preset.name}</h3>
-                  <div className="preset-info">
-                    <span className="question-count">{preset.questions.length} questions</span>
-                  </div>
-                  <div className="preset-preview">
-                    {Array.isArray(preset.questions) ? (
-                      preset.questions.slice(0, 2).map((q, i) => (
-                        <div key={i} className="preview-question">
-                          {q && q.label ? q.label : 'No question label'}
-                        </div>
-                      ))
-                    ) : (
-                      <div className="preview-question">Invalid questions format</div>
-                    )}
-                    {Array.isArray(preset.questions) && preset.questions.length > 2 && (
-                      <div className="preview-more">+{preset.questions.length - 2} more</div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {!viewingPublishedForm && (isCreatingNew || selectedPreset) && (
-        <div className="form-builder">
-          <div className="form-builder-header">
-            <input 
-              type="text" 
-              className="form-title-input" 
-              value={currentForm.name}
-              onChange={(e) => setCurrentForm({...currentForm, name: e.target.value})}
-              placeholder="Form Title"
-            />
-            <div className="builder-actions">
-              <button className="cancel-btn" onClick={() => {
-                setIsCreatingNew(false);
-                setSelectedPreset(null);
-                setEditingQuestion(null);
-                if (publishedForm) {
-                  setViewingPublishedForm(true);
-                }
-              }}>Cancel</button>
-              <button className="save-preset-btn" onClick={handleSavePreset}>Save Preset</button>
-              <button className="publish-form-btn" onClick={handlePublishForm}>Publish Form</button>
-            </div>
-          </div>
-
-          <div className="questions-container">
-            {currentForm.questions.map((question, index) => (
-              <div 
-                key={question.id} 
-                className={`question-item ${editingQuestion === question.id ? 'editing' : ''}`}
-                onClick={() => setEditingQuestion(question.id)}
-              >
-                <div className="question-header">
-                  <div className="question-badge">
-                    <span className="question-number">{index + 1}</span>
-                    <span className="question-type">
-                      {getQuestionTypeDisplay(question.type)}
-                    </span>
-                  </div>
-                  <div className="question-controls">
-                    <button 
-                      className="question-control-btn move-up"
-                      disabled={index === 0}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleMoveQuestionUp(index);
-                      }}
-                      title="Move question up"
-                    >
-                      ↑
-                    </button>
-                    <button 
-                      className="question-control-btn move-down"
-                      disabled={index === currentForm.questions.length - 1}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleMoveQuestionDown(index);
-                      }}
-                      title="Move question down"
-                    >
-                      ↓
-                    </button>
-                    <button 
-                      className="question-control-btn remove"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleRemoveQuestion(question.id);
-                      }}
-                      title="Remove question"
-                    >
-                      ×
-                    </button>
-                  </div>
-                </div>
-                <input
-                  type="text"
-                  className="question-label"
-                  value={question.label}
-                  onChange={(e) => handleQuestionChange(question.id, "label", e.target.value)}
-                  placeholder="Question text"
-                  onClick={(e) => e.stopPropagation()}
-                />
-                
-                {editingQuestion === question.id && renderQuestionEditor(question)}
-                
-                <div className="question-preview">
-                  {renderQuestionPreview(question)}
-                </div>
-              </div>
-            ))}
-
-            {currentForm.questions.length === 0 && (
-              <div className="empty-form-message">
-                <div className="empty-icon">+</div>
-                <h3>No questions yet</h3>
-                <p>Use the buttons below to add questions to your form</p>
-              </div>
-            )}
-          </div>
-
-          <div className="form-actions">
-            <div className="add-question-panel">
-              <span className="add-question-label">Add new question:</span>
-              <div className="add-question-buttons">
-                <button onClick={() => handleAddQuestion("short")}>
-                  <span className="btn-icon">+</span> Short Answer
-                </button>
-                <button onClick={() => handleAddQuestion("paragraph")}>
-                  <span className="btn-icon">+</span> Paragraph
-                </button>
-                <button onClick={() => handleAddQuestion("multiple")}>
-                  <span className="btn-icon">+</span> Multiple Choice
-                </button>
-                <button onClick={() => handleAddQuestion("slider")}>
-                  <span className="btn-icon">+</span> Scale (1-10)
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-=======
     );
   };
->>>>>>> ae4e10fbc3cef3efa44cc121e1e7211d25e55ad9
 
   // Render the Student view
   const renderStudentView = () => {
