@@ -2,36 +2,52 @@
 import React, { useState, useEffect } from 'react';
 import '../styles/ReportAccess.css';
 
-const ReportAccess = ({ publishedForm }) => {
-  const [responses, setResponses] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
+const ReportAccess = ({ publishedForm, allFormResponses = [] }) => {
+  const [selectedFormId, setSelectedFormId] = useState(null);
   const [selectedResponse, setSelectedResponse] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
 
-  // Load responses from localStorage
-  useEffect(() => {
-    const loadResponses = () => {
-      const savedResponses = localStorage.getItem('studentResponses');
-      if (savedResponses) {
-        const parsedResponses = JSON.parse(savedResponses);
-        // Filter responses for the current form
-        const formResponses = publishedForm 
-          ? parsedResponses.filter(r => r.formName === publishedForm.name)
-          : [];
-        setResponses(formResponses);
-      }
-      setIsLoading(false);
-    };
+  // If no responses, show empty state
+  if (!allFormResponses || allFormResponses.length === 0 || allFormResponses.every(f => !f.responses || f.responses.length === 0)) {
+    return (
+      <div className="report-access empty-state">
+        <div className="empty-icon">!</div>
+        <h2>No responses available</h2>
+        <p>There are no responses submitted yet.</p>
+      </div>
+    );
+  }
 
-    loadResponses();
-  }, [publishedForm]);
+  // If no form selected, show list of forms to pick
+  if (!selectedFormId) {
+    return (
+      <div className="report-access">
+        <h2>View Responses by Form</h2>
+        <ul className="form-list">
+          {allFormResponses.filter(f => f.responses && f.responses.length > 0).map(form => (
+            <li key={form.formId}>
+              <button className="form-select-btn" onClick={() => setSelectedFormId(form.formId)}>
+                {form.title} ({form.responses.length} responses)
+              </button>
+            </li>
+          ))}
+        </ul>
+      </div>
+    );
+  }
+
+  // Find selected form's responses
+  const formObj = allFormResponses.find(f => f.formId === selectedFormId);
+  const responses = formObj ? formObj.responses : [];
+  const formTitle = formObj ? formObj.title : '';
 
   // Filter responses based on search term
   const filteredResponses = responses.filter(response => {
     const searchLower = searchTerm.toLowerCase();
     return (
-      response.id.toString().includes(searchLower) ||
-      response.submittedAt.toLowerCase().includes(searchLower)
+      (response.id && response.id.toString().includes(searchLower)) ||
+      (response.student_id && response.student_id.toString().includes(searchLower)) ||
+      (response.submitted_at && response.submitted_at.toLowerCase().includes(searchLower))
     );
   });
 
@@ -43,36 +59,12 @@ const ReportAccess = ({ publishedForm }) => {
     setSelectedResponse(null);
   };
 
-  const handleDeleteResponse = (responseId) => {
-    if (window.confirm('Are you sure you want to delete this response?')) {
-      const updatedResponses = responses.filter(r => r.id !== responseId);
-      setResponses(updatedResponses);
-      localStorage.setItem('studentResponses', JSON.stringify(updatedResponses));
-      if (selectedResponse && selectedResponse.id === responseId) {
-        setSelectedResponse(null);
-      }
-    }
+  const handleBackToForms = () => {
+    setSelectedFormId(null);
+    setSelectedResponse(null);
   };
 
-  if (!publishedForm) {
-    return (
-      <div className="report-access empty-state">
-        <div className="empty-icon">!</div>
-        <h2>No form published</h2>
-        <p>There is no form currently published to view responses.</p>
-      </div>
-    );
-  }
-
-  if (isLoading) {
-    return (
-      <div className="report-access loading">
-        <div className="spinner"></div>
-        <p>Loading responses...</p>
-      </div>
-    );
-  }
-
+  // Render single response detail
   if (selectedResponse) {
     return (
       <div className="report-access response-detail">
@@ -80,39 +72,44 @@ const ReportAccess = ({ publishedForm }) => {
           <button className="back-btn" onClick={handleBackToList}>
             ← Back to Responses
           </button>
+          <button className="back-btn" onClick={handleBackToForms}>
+            ← Back to Forms
+          </button>
           <h2>Response Details</h2>
           <div className="response-meta">
-            <span>Submitted: {new Date(selectedResponse.submittedAt).toLocaleString()}</span>
-            <button 
-              className="delete-btn"
-              onClick={() => handleDeleteResponse(selectedResponse.id)}
-            >
-              Delete Response
-            </button>
+            <span>Submitted: {new Date(selectedResponse.submitted_at).toLocaleString()}</span>
+            <span>Student ID: {selectedResponse.student_id}</span>
           </div>
         </div>
-
         <div className="response-content">
-          {publishedForm.questions.map((question, index) => (
-            <div key={question.id} className="response-question">
-              <div className="question-header">
-                <span className="question-number">{index + 1}</span>
-                <h3>{question.label}</h3>
+          {formObj && formObj.questions && formObj.questions.length > 0 ? (
+            formObj.questions.map((question, index) => (
+              <div key={question.id} className="response-question">
+                <div className="question-header">
+                  <span className="question-number">{index + 1}</span>
+                  <h3>{question.label}</h3>
+                </div>
+                <div className="question-response">
+                  {renderResponse(question, selectedResponse.responses[question.id]?.answer)}
+                </div>
               </div>
-              <div className="question-response">
-                {renderResponse(question, selectedResponse.responses[question.id])}
-              </div>
-            </div>
-          ))}
+            ))
+          ) : (
+            <div>No question details available.</div>
+          )}
         </div>
       </div>
     );
   }
 
+  // Render list of responses for selected form
   return (
     <div className="report-access">
       <div className="access-header">
-        <h2>Student Responses for: {publishedForm.name}</h2>
+        <button className="back-btn" onClick={handleBackToForms}>
+          ← Back to Forms
+        </button>
+        <h2>Responses for: {formTitle}</h2>
         <div className="search-container">
           <input
             type="text"
@@ -122,7 +119,6 @@ const ReportAccess = ({ publishedForm }) => {
           />
         </div>
       </div>
-
       {filteredResponses.length === 0 ? (
         <div className="empty-responses">
           <p>No responses have been submitted yet.</p>
@@ -131,14 +127,16 @@ const ReportAccess = ({ publishedForm }) => {
         <div className="responses-list">
           <div className="list-header">
             <span className="header-id">ID</span>
+            <span className="header-student">Student ID</span>
             <span className="header-date">Submitted At</span>
             <span className="header-actions">Actions</span>
           </div>
           {filteredResponses.map(response => (
             <div key={response.id} className="response-item">
               <span className="response-id">{response.id}</span>
+              <span className="response-student">{response.student_id}</span>
               <span className="response-date">
-                {new Date(response.submittedAt).toLocaleString()}
+                {new Date(response.submitted_at).toLocaleString()}
               </span>
               <div className="response-actions">
                 <button 
@@ -146,12 +144,6 @@ const ReportAccess = ({ publishedForm }) => {
                   onClick={() => handleViewResponse(response)}
                 >
                   View
-                </button>
-                <button 
-                  className="delete-btn"
-                  onClick={() => handleDeleteResponse(response.id)}
-                >
-                  Delete
                 </button>
               </div>
             </div>
@@ -164,8 +156,7 @@ const ReportAccess = ({ publishedForm }) => {
 
 // Helper function to render different response types
 const renderResponse = (question, response) => {
-  if (!response) return <div className="no-response">No response</div>;
-
+  if (response === undefined || response === null) return <div className="no-response">No response</div>;
   switch (question.type) {
     case "short":
     case "paragraph":

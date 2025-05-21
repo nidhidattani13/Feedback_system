@@ -75,7 +75,7 @@ const Login = () => {
         } else if (/^\d{4}$/.test(existingUser.enrollment)) {
           navigate("/feedback-system/faculty-dashboard");
         } else {
-          navigate("/admin-dashboard");
+          navigate("feedback-system/admin-dashboard");
         }
       } else {
         // New user, redirect to profile completion page
@@ -114,7 +114,8 @@ const Login = () => {
     // Store user data locally
     localStorage.setItem("token", "user-logged-in");
     localStorage.setItem("userData", JSON.stringify(result.user));
-
+    localStorage.setItem("enrollment", enrollment);
+    
     alert("Login successful!");
 
     // Redirect based on enrollment type
@@ -123,7 +124,7 @@ const Login = () => {
     } else if (/^\d{6}$/.test(enrollment)) {
       navigate("/feedback-system/faculty-dashboard");
     } else {
-      navigate("/admin-dashboard");
+      navigate("feedback-system/admin-dashboard");
     }
   } catch (error) {
     console.error("Login error:", error.message);
@@ -185,7 +186,7 @@ const Login = () => {
             <h1>Welcome Back</h1>
             <p className="account-link">
               Don't have an account?{" "}
-              <span onClick={() => navigate("/signup")}>
+              <span onClick={() => navigate("/feedback-system/signup")}>
                 Create New Account
               </span>
             </p>

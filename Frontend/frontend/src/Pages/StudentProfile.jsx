@@ -38,11 +38,26 @@ const StudentProfile = ({ isOpen, onClose, initialData }) => {
   useEffect(() => {
     const fetchStudentProfile = async () => {
       try {
-        const enrollmentNumber = initialData?.enrollmentNumber || "EN2021CS001"; // fallback
+        const enrollmentNumber = localStorage.getItem("enrollment") ;
         
         // First: Try to get student by enrollment number
         const idRes = await fetch(`http://localhost:5000/api/students/enroll/${enrollmentNumber}`);
         
+        if (idRes.status === 404) {
+          // If not found, keep everything empty
+          setProfileData({
+            id: "",
+            name: "",
+            enrollmentNumber: "",
+            grNumber: "",
+            program: "",
+            batch: "",
+            email: "",
+            phone: ""
+          });
+          setAcademicData({ sgpa: [] });
+          return;
+        }
         if (!idRes.ok) {
           const errorText = await idRes.text();
           console.error(`Failed to fetch student: ${errorText}`);
@@ -194,8 +209,8 @@ const StudentProfile = ({ isOpen, onClose, initialData }) => {
     try {
       const submissionData = {
         name: profileData.name,
-        enrollment_number: profileData.enrollmentNumber, // Use snake_case for database
-        gr_number: profileData.grNumber, // Use snake_case for database
+        enrollmentNumber: profileData.enrollmentNumber, // Use snake_case for database
+        grNumber: profileData.grNumber, // Use snake_case for database
         program: profileData.program,
         batch: profileData.batch,
         email: profileData.email,

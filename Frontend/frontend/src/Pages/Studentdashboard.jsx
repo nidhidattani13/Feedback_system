@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import StudentProfile from "./StudentProfile";
 import axios from 'axios';
-import FeedbackForm from '../components/FeedbackForm';
+import FeedbackForm from '../components/Feedbackform';
 
 const StudentDashboard = () => {
   const [subjects, setSubjects] = useState([]);

@@ -97,7 +97,7 @@ router.put('/:id/academic', async (req, res) => {
           batch,
           email,
           phone,
-          sgpa: [],                      // initialize SGPA array
+          // sgpa: [],                      // initialize SGPA array
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         }

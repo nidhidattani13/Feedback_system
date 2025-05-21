@@ -112,6 +112,10 @@ const ReportView = ({ mode = "admin" }) => {
   const [transitioning, setTransitioning] = useState(false);
   const [transitionDirection, setTransitionDirection] = useState('forward');
 
+  // Responses state
+  const [responses, setResponses] = useState([]); // Store responses for the published form
+  const [allFormResponses, setAllFormResponses] = useState([]); // Store all responses for all forms
+
   // Load data from localStorage on component mount
   useEffect(() => {
     const savedPresets = localStorage.getItem('formPresets');
@@ -130,6 +134,7 @@ const ReportView = ({ mode = "admin" }) => {
     
     // Load presets from database
     fetchPresets();
+    fetchResponses();
 
     // Load mock student data
     const mockStudents = loadMockStudents();
@@ -411,6 +416,10 @@ const ReportView = ({ mode = "admin" }) => {
       const response = await axios.get(`${API_URL}/form/latest`);
       setPublishedForm(response.data);
       setViewingPublishedForm(true);
+      // Fetch responses for the latest form (if needed)
+      if (response.data && (response.data.id || response.data._id)) {
+        fetchResponses(response.data.id || response.data._id);
+      }
     } catch (error) {
       console.error('Error fetching form:', error);
       alert('Error loading feedback form. Please try again later.');
@@ -426,6 +435,47 @@ const ReportView = ({ mode = "admin" }) => {
       console.error('Error fetching forms:', error);
       alert('Error loading feedback forms. Please try again later.');
     }
+  };
+
+  // Fetch responses for a form
+  const fetchResponses = async (formId) => {
+    if (!formId) return;
+    try {
+      const response = await axios.get(`${API_URL}/responses/${formId}`);
+      setResponses(response.data);
+    } catch (error) {
+      console.error('Error fetching responses:', error);
+      setResponses([]);
+    }
+  };
+
+  // Fetch responses for all forms (for admin view)
+  const fetchAllFormResponses = async (formList) => {
+    if (!formList || !Array.isArray(formList)) return;
+    const allResponses = [];
+    for (const form of formList) {
+      const formId = form.id || form._id;
+      if (!formId) continue;
+      let questionsArray = [];
+      if (form.questions) {
+        if (typeof form.questions === 'string') {
+          try {
+            questionsArray = JSON.parse(form.questions);
+          } catch (e) {
+            questionsArray = [];
+          }
+        } else if (Array.isArray(form.questions)) {
+          questionsArray = form.questions;
+        }
+      }
+      try {
+        const res = await axios.get(`${API_URL}/responses/${formId}`);
+        allResponses.push({ formId, title: form.title || form.name, questions: questionsArray, responses: res.data });
+      } catch (err) {
+        allResponses.push({ formId, title: form.title || form.name, questions: questionsArray, responses: [] });
+      }
+    }
+    setAllFormResponses(allResponses);
   };
 
   // Save preset to database
@@ -456,6 +506,8 @@ const ReportView = ({ mode = "admin" }) => {
     try {
       const response = await axios.get(`${API_URL}/presets`);
       setPresets(response.data);
+      // Fetch all responses for all forms after presets are loaded
+      fetchAllFormResponses(response.data);
     } catch (error) {
       console.error('Error fetching presets:', error);
       alert('Error loading presets. Please try again.');
@@ -791,56 +843,74 @@ const ReportView = ({ mode = "admin" }) => {
   };
 
   // Render the Presets view
-  const renderPresetsView = () => (
-    <div className={`view-container ${transitioning && transitionDirection === 'forward' ? 'slide-out-left' : ''} ${transitioning && transitionDirection === 'backward' ? 'slide-in-right' : ''}`}>
-      <div className="preset-section">
-        <div className="section-header">
-          <h2>Select a Preset or Create New</h2>
-          <div className="section-actions">
-            {publishedForm && (
-              <button 
-                className="view-published-btn"
-                onClick={handleViewPublishedForm}
-              >
-                View Published Form
-              </button>
-            )}
+  // Render the Presets view
+const renderPresetsView = () => (
+  <div className={`view-container ${transitioning && transitionDirection === 'forward' ? 'slide-out-left' : ''} ${transitioning && transitionDirection === 'backward' ? 'slide-in-right' : ''}`}>
+    <div className="preset-section">
+      <div className="section-header">
+        <h2>Select a Preset or Create New</h2>
+        <div className="section-actions">
+          {publishedForm && (
             <button 
-              className="create-new-btn"
-              onClick={handleCreateNew}
+              className="view-published-btn"
+              onClick={handleViewPublishedForm}
             >
-              Create New Form
+              View Published Form
             </button>
-          </div>
+          )}
+          <button 
+            className="create-new-btn"
+            onClick={handleCreateNew}
+          >
+            Create New Form
+          </button>
         </div>
-        
-        <div className="preset-grid">
-          {presets.map((preset, index) => (
+      </div>
+      
+      <div className="preset-grid">
+        {presets.map((preset, index) => {
+          // Parse questions if they are stored as a string
+          let questionsArray = [];
+          if (preset.questions) {
+            if (typeof preset.questions === 'string') {
+              try {
+                questionsArray = JSON.parse(preset.questions);
+              } catch (e) {
+                console.error("Failed to parse questions:", e);
+                questionsArray = [];
+              }
+            } else if (Array.isArray(preset.questions)) {
+              questionsArray = preset.questions;
+            }
+          }
+
+          return (
             <div 
               key={index} 
               className="preset-card"
-              onClick={() => handleSelectPreset(preset)}
+              onClick={() => handleSelectPreset({...preset, questions: questionsArray})}
             >
               <div className="preset-card-content">
-                <h3>{preset.name}</h3>
+                <h3>{preset.title || preset.name}</h3>
                 <div className="preset-info">
-                  <span className="question-count">{preset.questions.length} questions</span>
+                  <span className="question-count">{questionsArray.length} questions</span>
                 </div>
                 <div className="preset-preview">
-                  {preset.questions.slice(0, 2).map((q, i) => (
+                  {questionsArray.slice(0, 2).map((q, i) => (
                     <div key={i} className="preview-question">{q.label}</div>
                   ))}
-                  {preset.questions.length > 2 && (
-                    <div className="preview-more">+{preset.questions.length - 2} more</div>
+                  {questionsArray.length > 2 && (
+                    <div className="preview-more">+{questionsArray.length - 2} more</div>
                   )}
                 </div>
               </div>
             </div>
-          ))}
-        </div>
+          );
+        })}
       </div>
     </div>
-  );
+  </div>
+);
 
   // Render the Form Builder view
   const renderBuilderView = () => (
@@ -1061,7 +1131,7 @@ const ReportView = ({ mode = "admin" }) => {
           </button>
         </div>
         
-        {activeTab === 'forms' ? renderTabContent() : <ReportAccess publishedForm={publishedForm} />}
+        {activeTab === 'forms' ? renderTabContent() : <ReportAccess publishedForm={publishedForm} responses={responses} allFormResponses={allFormResponses} />}
       </div>
     );
   };

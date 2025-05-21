@@ -195,7 +195,7 @@ const Signup = () => {
       toast.success("✅ Signup successful! Redirecting to login... 🎉");
       // Ensure redirect happens even if component unmounts
       setTimeout(() => {
-        navigate("/login");
+        navigate("feedback-system/login");
       }, 1500);
     } catch (error) {
       console.error("❌ Error:", error.message);
@@ -333,7 +333,7 @@ const Signup = () => {
           </div>
         </div>
 
-        <p className="login-link" onClick={() => navigate("/login")}>
+        <p className="login-link" onClick={() => navigate("/feedback-system/login")}>
           Already have an account? Sign In
         </p>
       </div>
