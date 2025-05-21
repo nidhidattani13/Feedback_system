@@ -84,32 +84,36 @@ const ADDITIONAL_PRESETS = [
 ];
 
 const ReportView = ({ mode = "admin" }) => {
-  // States for managing form creation and display
+  // States for managing view navigation
+  const [currentView, setCurrentView] = useState('presets'); // 'presets', 'builder', 'published'
+  const [activeTab, setActiveTab] = useState('forms'); // 'forms', 'responses'
+  
+  // Form management states
   const [presets, setPresets] = useState([]);
-  const [selectedPreset, setSelectedPreset] = useState(null);
-  const [isCreatingNew, setIsCreatingNew] = useState(false);
   const [currentForm, setCurrentForm] = useState({ name: "", questions: [] });
   const [publishedForm, setPublishedForm] = useState(null);
+  const [editingQuestion, setEditingQuestion] = useState(null);
+  const [currentOptionInput, setCurrentOptionInput] = useState("");
+  
+  // Student response states
   const [studentResponses, setStudentResponses] = useState({});
   const [submitted, setSubmitted] = useState(false);
-  const [currentOptionInput, setCurrentOptionInput] = useState("");
-  const [editingQuestion, setEditingQuestion] = useState(null);
-  const [viewingPublishedForm, setViewingPublishedForm] = useState(false);
-  const [activeTab, setActiveTab] = useState('forms');
   
   // Random assigner states
   const [students, setStudents] = useState([]);
   const [assignedStudents, setAssignedStudents] = useState([]);
-  const [showRandomAssigner, setShowRandomAssigner] = useState(false);
   const [lastAssignedIds, setLastAssignedIds] = useState([]);
 
-  // Load presets and published form from localStorage on component mount
+  // Animation states
+  const [transitioning, setTransitioning] = useState(false);
+  const [transitionDirection, setTransitionDirection] = useState('forward');
+
+  // Load data from localStorage on component mount
   useEffect(() => {
     const savedPresets = localStorage.getItem('formPresets');
     if (savedPresets) {
       setPresets(JSON.parse(savedPresets));
     } else {
-      // Initialize with default presets if none exist
       const initialPresets = [DEFAULT_PRESET, ...ADDITIONAL_PRESETS];
       setPresets(initialPresets);
       localStorage.setItem('formPresets', JSON.stringify(initialPresets));
@@ -118,74 +122,99 @@ const ReportView = ({ mode = "admin" }) => {
     const savedPublishedForm = localStorage.getItem('publishedForm');
     if (savedPublishedForm) {
       setPublishedForm(JSON.parse(savedPublishedForm));
-      setViewingPublishedForm(true);
     }
     
-    // Load mock student data
     const mockStudents = loadMockStudents();
     setStudents(mockStudents);
     
-    // Load any previously assigned students
     const savedAssignedStudents = localStorage.getItem('assignedStudents');
     if (savedAssignedStudents) {
       setAssignedStudents(JSON.parse(savedAssignedStudents));
     }
 
-    // Load last assigned student IDs
     const savedLastAssignedIds = localStorage.getItem('lastAssignedIds');
     if (savedLastAssignedIds) {
       setLastAssignedIds(JSON.parse(savedLastAssignedIds));
     }
   }, []);
 
+  // Navigation functions with animations
+  const navigateTo = (view, direction = 'forward') => {
+    setTransitionDirection(direction);
+    setTransitioning(true);
+    
+    setTimeout(() => {
+      setCurrentView(view);
+      setTransitioning(false);
+    }, 300); // Match this with CSS transition duration
+  };
+
+  const handleSelectPreset = (preset) => {
+    setCurrentForm({ ...preset });
+    navigateTo('builder');
+  };
+
+  const handleCreateNew = () => {
+    setCurrentForm({ name: "New Form", questions: [] });
+    navigateTo('builder');
+  };
+
+  const handleBackToPresets = () => {
+    navigateTo('presets', 'backward');
+  };
+
+  const handleViewPublishedForm = () => {
+    navigateTo('published');
+  };
+
+  const handleBackFromPublished = () => {
+    navigateTo('presets', 'backward');
+  };
+
   // Mock function to generate student data
   const loadMockStudents = () => {
     const mockStudents = [];
     
-    // Generate outstanding students (CGPA >= 3.7)
     for (let i = 0; i < 10; i++) {
       mockStudents.push({
         id: `outstanding-${i}`,
         name: `Outstanding Student ${i + 1}`,
         email: `outstanding${i + 1}@example.com`,
         academicDetails: {
-          cgpa: (3.7 + Math.random() * 0.3).toFixed(2) // Between 3.7 and 4.0
+          cgpa: (3.7 + Math.random() * 0.3).toFixed(2)
         }
       });
     }
     
-    // Generate above average students (CGPA 3.0-3.69)
     for (let i = 0; i < 15; i++) {
       mockStudents.push({
         id: `aboveavg-${i}`,
         name: `Above Average Student ${i + 1}`,
         email: `aboveavg${i + 1}@example.com`,
         academicDetails: {
-          cgpa: (3.0 + Math.random() * 0.69).toFixed(2) // Between 3.0 and 3.69
+          cgpa: (3.0 + Math.random() * 0.69).toFixed(2)
         }
       });
     }
     
-    // Generate mediocre students (CGPA 2.0-2.99)
     for (let i = 0; i < 15; i++) {
       mockStudents.push({
         id: `mediocre-${i}`,
         name: `Mediocre Student ${i + 1}`,
         email: `mediocre${i + 1}@example.com`,
         academicDetails: {
-          cgpa: (2.0 + Math.random() * 0.99).toFixed(2) // Between 2.0 and 2.99
+          cgpa: (2.0 + Math.random() * 0.99).toFixed(2)
         }
       });
     }
     
-    // Generate low performing students (CGPA < 2.0)
     for (let i = 0; i < 10; i++) {
       mockStudents.push({
         id: `low-${i}`,
         name: `Low Performing Student ${i + 1}`,
         email: `low${i + 1}@example.com`,
         academicDetails: {
-          cgpa: (Math.random() * 1.99).toFixed(2) // Between 0 and 1.99
+          cgpa: (Math.random() * 1.99).toFixed(2)
         }
       });
     }
@@ -207,13 +236,11 @@ const ReportView = ({ mode = "admin" }) => {
   const selectRandomStudents = () => {
     const classified = classifyStudents(students);
     
-    // Filter out students who were assigned last time
     const availableOutstanding = classified.outstanding.filter(s => !lastAssignedIds.includes(s.id));
     const availableAboveAvg = classified.aboveAvg.filter(s => !lastAssignedIds.includes(s.id));
     const availableMediocre = classified.mediocre.filter(s => !lastAssignedIds.includes(s.id));
     const availableLow = classified.low.filter(s => !lastAssignedIds.includes(s.id));
 
-    // If not enough available students, fall back to all students in the category
     const finalOutstanding = availableOutstanding.length >= 3 ? 
       availableOutstanding : classified.outstanding;
     const finalAboveAvg = availableAboveAvg.length >= 3 ? 
@@ -223,7 +250,6 @@ const ReportView = ({ mode = "admin" }) => {
     const finalLow = availableLow.length >= 2 ? 
       availableLow : classified.low;
 
-    // Shuffle and select students
     const shuffle = (array) => [...array].sort(() => 0.5 - Math.random());
     
     const selectedOutstanding = shuffle(finalOutstanding).slice(0, 3);
@@ -238,7 +264,6 @@ const ReportView = ({ mode = "admin" }) => {
       ...selectedLow
     ];
 
-    // Save the IDs of selected students to avoid selecting them next time
     const selectedIds = selectedStudents.map(s => s.id);
     setLastAssignedIds(selectedIds);
     localStorage.setItem('lastAssignedIds', JSON.stringify(selectedIds));
@@ -253,26 +278,6 @@ const ReportView = ({ mode = "admin" }) => {
     localStorage.setItem('assignedStudents', JSON.stringify(selectedStudents));
   };
 
-  // Handle preset selection
-  const handleSelectPreset = (preset) => {
-    setSelectedPreset(preset);
-    setCurrentForm({ ...preset });
-    setIsCreatingNew(false);
-    setViewingPublishedForm(false);
-    setShowRandomAssigner(false);
-    setActiveTab('forms');
-  };
-
-  // Create a new preset
-  const handleCreateNew = () => {
-    setIsCreatingNew(true);
-    setSelectedPreset(null);
-    setCurrentForm({ name: "New Form", questions: [] });
-    setViewingPublishedForm(false);
-    setShowRandomAssigner(false);
-    setActiveTab('forms');
-  };
-
   // Add a new question to the form
   const handleAddQuestion = (type) => {
     const newQuestionId = Date.now();
@@ -282,7 +287,6 @@ const ReportView = ({ mode = "admin" }) => {
       label: `New ${type} question`
     };
 
-    // Add type-specific properties
     switch (type) {
       case "multiple":
         newQuestion.options = ["Option 1", "Option 2", "Option 3"];
@@ -398,11 +402,9 @@ const ReportView = ({ mode = "admin" }) => {
     const existingPresetIndex = presets.findIndex(p => p.name === currentForm.name);
 
     if (existingPresetIndex >= 0) {
-      // Update existing preset
       updatedPresets = [...presets];
       updatedPresets[existingPresetIndex] = { ...currentForm };
     } else {
-      // Add new preset
       updatedPresets = [...presets, currentForm];
     }
 
@@ -420,9 +422,7 @@ const ReportView = ({ mode = "admin" }) => {
 
     setPublishedForm(currentForm);
     localStorage.setItem('publishedForm', JSON.stringify(currentForm));
-    setViewingPublishedForm(true);
-    setShowRandomAssigner(true);
-    setActiveTab('forms');
+    navigateTo('published');
     alert("Form published successfully! Now you can assign it to students.");
   };
 
@@ -452,7 +452,6 @@ const ReportView = ({ mode = "admin" }) => {
 
   // Submit student responses
   const handleSubmitResponses = () => {
-    // Check if all questions are answered
     const unansweredQuestions = publishedForm.questions.filter(
       q => studentResponses[q.id] === undefined || 
            (typeof studentResponses[q.id] === 'string' && studentResponses[q.id].trim() === "")
@@ -463,7 +462,6 @@ const ReportView = ({ mode = "admin" }) => {
       return;
     }
 
-    // Save responses to localStorage
     const allResponses = JSON.parse(localStorage.getItem('studentResponses') || '[]');
     const newResponse = {
       id: Date.now(),
@@ -504,35 +502,15 @@ const ReportView = ({ mode = "admin" }) => {
     });
   };
 
-  // Toggle back to form list view
-  const handleBackToForms = () => {
-    setViewingPublishedForm(false);
-    setIsCreatingNew(false);
-    setSelectedPreset(null);
-    setEditingQuestion(null);
-    setShowRandomAssigner(false);
-    setActiveTab('forms');
-  };
-
-  // View the currently published form
-  const handleViewPublishedForm = () => {
-    setViewingPublishedForm(true);
-    setIsCreatingNew(false);
-    setSelectedPreset(null);
-    setShowRandomAssigner(true);
-    setActiveTab('forms');
-  };
-
   // Unpublish the current form
   const handleUnpublishForm = () => {
     if (window.confirm("Are you sure you want to unpublish this form?")) {
       localStorage.removeItem('publishedForm');
       setPublishedForm(null);
-      setViewingPublishedForm(false);
-      setShowRandomAssigner(false);
       setAssignedStudents([]);
       localStorage.removeItem('assignedStudents');
       localStorage.removeItem('lastAssignedIds');
+      navigateTo('presets', 'backward');
       alert("Form has been unpublished.");
     }
   };
@@ -751,47 +729,236 @@ const ReportView = ({ mode = "admin" }) => {
     );
   };
 
-  // Render the Published Form Preview (in Admin mode)
-  const renderPublishedFormPreview = () => (
-    <div className="published-form-preview">
-      <div className="published-form-header">
-        <div className="published-status">
-          <span className="status-indicator"></span>
-          <span className="status-text">Published Form</span>
+  // Render the Presets view
+  const renderPresetsView = () => (
+    <div className={`view-container ${transitioning && transitionDirection === 'forward' ? 'slide-out-left' : ''} ${transitioning && transitionDirection === 'backward' ? 'slide-in-right' : ''}`}>
+      <div className="preset-section">
+        <div className="section-header">
+          <h2>Select a Preset or Create New</h2>
+          <div className="section-actions">
+            {publishedForm && (
+              <button 
+                className="view-published-btn"
+                onClick={handleViewPublishedForm}
+              >
+                View Published Form
+              </button>
+            )}
+            <button 
+              className="create-new-btn"
+              onClick={handleCreateNew}
+            >
+              Create New Form
+            </button>
+          </div>
         </div>
-        <h2>{publishedForm.name}</h2>
-        <p className="form-description">This form is currently published and available to students.</p>
+        
+        <div className="preset-grid">
+          {presets.map((preset, index) => (
+            <div 
+              key={index} 
+              className="preset-card"
+              onClick={() => handleSelectPreset(preset)}
+            >
+              <div className="preset-card-content">
+                <h3>{preset.name}</h3>
+                <div className="preset-info">
+                  <span className="question-count">{preset.questions.length} questions</span>
+                </div>
+                <div className="preset-preview">
+                  {preset.questions.slice(0, 2).map((q, i) => (
+                    <div key={i} className="preview-question">{q.label}</div>
+                  ))}
+                  {preset.questions.length > 2 && (
+                    <div className="preview-more">+{preset.questions.length - 2} more</div>
+                  )}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
-      
-      <div className="published-form-actions">
-        <button className="back-btn" onClick={handleBackToForms}>
-          ← Back to Forms
-        </button>
-        <button className="danger-btn" onClick={handleUnpublishForm}>
-          Unpublish Form
-        </button>
+    </div>
+  );
+
+  // Render the Form Builder view
+  const renderBuilderView = () => (
+    <div className={`view-container ${transitioning && transitionDirection === 'forward' ? 'slide-out-left' : ''} ${transitioning && transitionDirection === 'backward' ? 'slide-in-right' : ''}`}>
+      <div className="form-builder">
+        <div className="form-builder-header">
+          <button 
+            className="back-button"
+            onClick={handleBackToPresets}
+          >
+            ← Back to Presets
+          </button>
+          <input 
+            type="text" 
+            className="form-title-input" 
+            value={currentForm.name}
+            onChange={(e) => setCurrentForm({...currentForm, name: e.target.value})}
+            placeholder="Form Title"
+          />
+          <div className="builder-actions">
+            <button 
+              className="save-preset-btn"
+              onClick={handleSavePreset}
+            >
+              Save Preset
+            </button>
+            <button 
+              className="publish-form-btn"
+              onClick={handlePublishForm}
+            >
+              Publish Form
+            </button>
+          </div>
+        </div>
+
+        <div className="questions-container">
+          {currentForm.questions.map((question, index) => (
+            <div 
+              key={question.id} 
+              className={`question-item ${editingQuestion === question.id ? 'editing' : ''}`}
+              onClick={() => setEditingQuestion(question.id)}
+            >
+              <div className="question-header">
+                <div className="question-badge">
+                  <span className="question-number">{index + 1}</span>
+                  <span className="question-type">
+                    {getQuestionTypeDisplay(question.type)}
+                  </span>
+                </div>
+                <div className="question-controls">
+                  <button 
+                    className="question-control-btn move-up"
+                    disabled={index === 0}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleMoveQuestionUp(index);
+                    }}
+                    title="Move question up"
+                  >
+                    ↑
+                  </button>
+                  <button 
+                    className="question-control-btn move-down"
+                    disabled={index === currentForm.questions.length - 1}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleMoveQuestionDown(index);
+                    }}
+                    title="Move question down"
+                  >
+                    ↓
+                  </button>
+                  <button 
+                    className="question-control-btn remove"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleRemoveQuestion(question.id);
+                    }}
+                    title="Remove question"
+                  >
+                    ×
+                  </button>
+                </div>
+              </div>
+              <input
+                type="text"
+                className="question-label"
+                value={question.label}
+                onChange={(e) => handleQuestionChange(question.id, "label", e.target.value)}
+                placeholder="Question text"
+                onClick={(e) => e.stopPropagation()}
+              />
+              
+              {editingQuestion === question.id && renderQuestionEditor(question)}
+              
+              <div className="question-preview">
+                {renderQuestionPreview(question)}
+              </div>
+            </div>
+          ))}
+
+          {currentForm.questions.length === 0 && (
+            <div className="empty-form-message">
+              <div className="empty-icon">+</div>
+              <h3>No questions yet</h3>
+              <p>Use the buttons below to add questions to your form</p>
+            </div>
+          )}
+        </div>
+
+        <div className="form-actions">
+          <div className="add-question-panel">
+            <span className="add-question-label">Add new question:</span>
+            <div className="add-question-buttons">
+              <button onClick={() => handleAddQuestion("short")}>
+                <span className="btn-icon">+</span> Short Answer
+              </button>
+              <button onClick={() => handleAddQuestion("paragraph")}>
+                <span className="btn-icon">+</span> Paragraph
+              </button>
+              <button onClick={() => handleAddQuestion("multiple")}>
+                <span className="btn-icon">+</span> Multiple Choice
+              </button>
+              <button onClick={() => handleAddQuestion("slider")}>
+                <span className="btn-icon">+</span> Scale (1-10)
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
-      
-      {/* RandomAssigner component integration */}
-      {showRandomAssigner && (
+    </div>
+  );
+
+  // Render the Published Form view
+  const renderPublishedView = () => (
+    <div className={`view-container ${transitioning && transitionDirection === 'forward' ? 'slide-out-left' : ''} ${transitioning && transitionDirection === 'backward' ? 'slide-in-right' : ''}`}>
+      <div className="published-form-preview">
+        <div className="published-form-header">
+          <button 
+            className="back-button"
+            onClick={handleBackFromPublished}
+          >
+            ← Back to Presets
+          </button>
+          <div className="published-status">
+            <span className="status-indicator"></span>
+            <span className="status-text">Published Form</span>
+          </div>
+          <h2>{publishedForm.name}</h2>
+          <p className="form-description">This form is currently published and available to students.</p>
+        </div>
+        
+        <div className="published-form-actions">
+          <button 
+            className="danger-btn"
+            onClick={handleUnpublishForm}
+          >
+            Unpublish Form
+          </button>
+        </div>
+        
         <div className="random-assigner-container">
           {renderRandomAssigner()}
         </div>
-      )}
-      
-      <div className="published-form-questions">
-        <h3 className="questions-section-title">Form Preview</h3>
-        {publishedForm.questions.map((question, index) => (
-          <div key={question.id} className="preview-question-item">
-            <div className="preview-question-header">
-              <span className="question-number">{index + 1}</span>
-              <h3 className="question-text">{question.label}</h3>
+        
+        <div className="published-form-questions">
+          <h3 className="questions-section-title">Form Preview</h3>
+          {publishedForm.questions.map((question, index) => (
+            <div key={question.id} className="preview-question-item">
+              <div className="preview-question-header">
+                <span className="question-number">{index + 1}</span>
+                <h3 className="question-text">{question.label}</h3>
+              </div>
+              <div className="preview-question-content">
+                {renderQuestionPreview(question)}
+              </div>
             </div>
-            <div className="preview-question-content">
-              {renderQuestionPreview(question)}
-            </div>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
     </div>
   );
@@ -799,178 +966,15 @@ const ReportView = ({ mode = "admin" }) => {
   // Render the Admin view
   const renderAdminView = () => {
     const renderTabContent = () => {
-      switch (activeTab) {
-        case 'forms':
-          return (
-            <>
-              {publishedForm && viewingPublishedForm && renderPublishedFormPreview()}
-              {!viewingPublishedForm && !isCreatingNew && !selectedPreset && (
-                <div className="preset-section">
-                  <div className="section-header">
-                    <h2>Select a Preset or Create New</h2>
-                    <div className="section-actions">
-                      {publishedForm && (
-                        <button className="view-published-btn" onClick={handleViewPublishedForm}>
-                          View Published Form
-                        </button>
-                      )}
-                      <button className="create-new-btn" onClick={handleCreateNew}>Create New Form</button>
-                    </div>
-                  </div>
-                  
-                  <div className="preset-grid">
-                    {presets.map((preset, index) => (
-                      <div 
-                        key={index} 
-                        className="preset-card" 
-                        onClick={() => handleSelectPreset(preset)}
-                      >
-                        <div className="preset-card-content">
-                          <h3>{preset.name}</h3>
-                          <div className="preset-info">
-                            <span className="question-count">{preset.questions.length} questions</span>
-                          </div>
-                          <div className="preset-preview">
-                            {preset.questions.slice(0, 2).map((q, i) => (
-                              <div key={i} className="preview-question">{q.label}</div>
-                            ))}
-                            {preset.questions.length > 2 && (
-                              <div className="preview-more">+{preset.questions.length - 2} more</div>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {!viewingPublishedForm && (isCreatingNew || selectedPreset) && (
-                <div className="form-builder">
-                  <div className="form-builder-header">
-                    <input 
-                      type="text" 
-                      className="form-title-input" 
-                      value={currentForm.name}
-                      onChange={(e) => setCurrentForm({...currentForm, name: e.target.value})}
-                      placeholder="Form Title"
-                    />
-                    <div className="builder-actions">
-                      <button className="cancel-btn" onClick={() => {
-                        setIsCreatingNew(false);
-                        setSelectedPreset(null);
-                        setEditingQuestion(null);
-                        if (publishedForm) {
-                          setViewingPublishedForm(true);
-                        }
-                      }}>Cancel</button>
-                      <button className="save-preset-btn" onClick={handleSavePreset}>Save Preset</button>
-                      <button className="publish-form-btn" onClick={handlePublishForm}>Publish Form</button>
-                    </div>
-                  </div>
-
-                  <div className="questions-container">
-                    {currentForm.questions.map((question, index) => (
-                      <div 
-                        key={question.id} 
-                        className={`question-item ${editingQuestion === question.id ? 'editing' : ''}`}
-                        onClick={() => setEditingQuestion(question.id)}
-                      >
-                        <div className="question-header">
-                          <div className="question-badge">
-                            <span className="question-number">{index + 1}</span>
-                            <span className="question-type">
-                              {getQuestionTypeDisplay(question.type)}
-                            </span>
-                          </div>
-                          <div className="question-controls">
-                            <button 
-                              className="question-control-btn move-up"
-                              disabled={index === 0}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleMoveQuestionUp(index);
-                              }}
-                              title="Move question up"
-                            >
-                              ↑
-                            </button>
-                            <button 
-                              className="question-control-btn move-down"
-                              disabled={index === currentForm.questions.length - 1}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleMoveQuestionDown(index);
-                              }}
-                              title="Move question down"
-                            >
-                              ↓
-                            </button>
-                            <button 
-                              className="question-control-btn remove"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleRemoveQuestion(question.id);
-                              }}
-                              title="Remove question"
-                            >
-                              ×
-                            </button>
-                          </div>
-                        </div>
-                        <input
-                          type="text"
-                          className="question-label"
-                          value={question.label}
-                          onChange={(e) => handleQuestionChange(question.id, "label", e.target.value)}
-                          placeholder="Question text"
-                          onClick={(e) => e.stopPropagation()}
-                        />
-                        
-                        {editingQuestion === question.id && renderQuestionEditor(question)}
-                        
-                        <div className="question-preview">
-                          {renderQuestionPreview(question)}
-                        </div>
-                      </div>
-                    ))}
-
-                    {currentForm.questions.length === 0 && (
-                      <div className="empty-form-message">
-                        <div className="empty-icon">+</div>
-                        <h3>No questions yet</h3>
-                        <p>Use the buttons below to add questions to your form</p>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="form-actions">
-                    <div className="add-question-panel">
-                      <span className="add-question-label">Add new question:</span>
-                      <div className="add-question-buttons">
-                        <button onClick={() => handleAddQuestion("short")}>
-                          <span className="btn-icon">+</span> Short Answer
-                        </button>
-                        <button onClick={() => handleAddQuestion("paragraph")}>
-                          <span className="btn-icon">+</span> Paragraph
-                        </button>
-                        <button onClick={() => handleAddQuestion("multiple")}>
-                          <span className="btn-icon">+</span> Multiple Choice
-                        </button>
-                        <button onClick={() => handleAddQuestion("slider")}>
-                          <span className="btn-icon">+</span> Scale (1-10)
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </>
-          );
-        case 'responses':
-          return <ReportAccess publishedForm={publishedForm} />;
+      switch (currentView) {
+        case 'presets':
+          return renderPresetsView();
+        case 'builder':
+          return renderBuilderView();
+        case 'published':
+          return renderPublishedView();
         default:
-          return null;
+          return renderPresetsView();
       }
     };
 
@@ -996,15 +1000,14 @@ const ReportView = ({ mode = "admin" }) => {
           </button>
         </div>
         
-        {renderTabContent()}
+        {activeTab === 'forms' ? renderTabContent() : <ReportAccess publishedForm={publishedForm} />}
       </div>
     );
   };
 
   // Render the Student view
   const renderStudentView = () => {
-    // Check if student is assigned to this form
-    const isAssigned = assignedStudents.some(s => s.id === 'current-student-id'); // Replace with actual student ID logic
+    const isAssigned = assignedStudents.some(s => s.id === 'current-student-id');
 
     if (!isAssigned) {
       return (
