@@ -1029,3 +1029,89 @@
     order: 1;
   }
 }
+/* Add to ReportView.css */
+.admin-tabs {
+  display: flex;
+  margin-bottom: 24px;
+  border-bottom: 1px solid var(--bg-hover);
+}
+
+.tab-btn {
+  background-color: transparent;
+  border: none;
+  padding: 12px 24px;
+  position: relative;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.tab-btn.active {
+  color: var(--accent-color);
+}
+
+.tab-btn.active::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background-color: var(--accent-color);
+}
+
+.tab-btn:hover {
+  background-color: var(--bg-hover);
+}
+/* Animation classes */
+.view-container {
+  transition: all 0.3s ease-in-out;
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.slide-out-left {
+  opacity: 0;
+  transform: translateX(-20px);
+}
+
+.slide-in-right {
+  opacity: 0;
+  transform: translateX(20px);
+}
+
+/* Apple-like glass effect */
+.preset-card, .question-item, .published-form-preview {
+  background: rgba(41, 26, 26, 0.383);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.1);
+  transition: all 0.3s ease;
+}
+
+.preset-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 12px 40px 0 rgba(31, 38, 135, 0.15);
+}
+
+/* Smooth transitions for buttons */
+button {
+  transition: all 0.3s ease;
+}
+
+button:hover {
+  transform: scale(1.02);
+  opacity: 0.9;
+}
+
+/* Floating animation for empty state icons */
+.empty-icon, .success-icon {
+  animation: float 3s ease-in-out infinite;
+}
+
+@keyframes float {
+  0% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+  100% { transform: translateY(0px); }
+}
