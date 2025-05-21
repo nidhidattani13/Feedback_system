@@ -10,9 +10,8 @@ const AdminProfile = ({ isOpen, onClose, initialData }) => {
     department: "",
     email: "",
     phone: "",
-    enrollmentNumber: "", // Added enrollment number field
-    avatar: null,
-    password:"",
+    enrollmentNumber: "",
+    password: "",
   });
 
   const [passwordData, setPasswordData] = useState({
@@ -25,15 +24,67 @@ const AdminProfile = ({ isOpen, onClose, initialData }) => {
   const [isChangingPassword, setIsChangingPassword] = useState(false);
   const [passwordError, setPasswordError] = useState("");
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [successMessage, setSuccessMessage] = useState("");
 
-  // ✅ Fetch real admin data on modal open
+  // Fetch admin data on modal open or when enrollment number changes
   useEffect(() => {
     const fetchAdminProfile = async () => {
-      const adminId = initialData?.id || "d0d65356-e235-4321-afb1-c6d3c4e8e34c"; // fallback
+      // Try to get admin ID from enrollment number first
+      let adminId = initialData?.id;
+      if (!adminId && initialData?.enrollmentNumber) {
+        const response = await fetch(`http://localhost:5000/api/admin/enroll/${initialData.enrollmentNumber}`);
+        if (response.ok) {
+          const data = await response.json();
+          adminId = data.id;
+        }
+      }
+
+      // If we still don't have admin ID and this is a new admin, initialize empty state
+      if (!adminId && !initialData?.enrollmentNumber) {
+        setProfileData({
+          id: "",
+          name: "",
+          position: "",
+          department: "",
+          email: "",
+          phone: "",
+          enrollmentNumber: "",
+          password: "",
+        });
+        return;
+      }
+
       try {
         const response = await fetch(`http://localhost:5000/api/admin/${adminId}`);
+        
+        if (response.status === 404) {
+          // If admin not found, initialize empty state
+          setProfileData({
+            id: "",
+            name: "",
+            position: "",
+            department: "",
+            email: "",
+            phone: "",
+            enrollmentNumber: "",
+            password: "",
+          });
+          return;
+        }
+
+        if (!response.ok) {
+          console.error("Failed to fetch admin data:", response.statusText);
+          return;
+        }
+        
         const data = await response.json();
         console.log("Fetched Admin Data:", data);
+        
+        if (!data) {
+          console.error("No admin data returned");
+          return;
+        }
+
         setProfileData({
           id: data.id,
           name: data.name,
@@ -41,8 +92,7 @@ const AdminProfile = ({ isOpen, onClose, initialData }) => {
           department: data.department,
           email: data.email,
           phone: data.phone,
-          enrollmentNumber: data.enrollmentNumber || "", // Added enrollment number
-          avatar: data.avatar_url || null,
+          enrollmentNumber: data.enrollment_number || "",
         });
       } catch (error) {
         console.error("Failed to fetch admin data:", error.message);
@@ -99,13 +149,13 @@ const AdminProfile = ({ isOpen, onClose, initialData }) => {
     }
   
     try {
-      // Prepare data for submission (convert avatar URL correctly)
+      // Prepare data for submission
       const submissionData = {
         ...profileData,
-        avatar_url: profileData.avatar
+        enrollment_number: profileData.enrollmentNumber
       };
-      delete submissionData.avatar; // Remove the avatar field
-  
+      delete submissionData.password; // Don't send password in update requests
+
       let response;
       
       if (profileData.id) {
@@ -113,39 +163,43 @@ const AdminProfile = ({ isOpen, onClose, initialData }) => {
         response = await fetch(`http://localhost:5000/api/admin/${profileData.id}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(submissionData),
+          body: JSON.stringify(submissionData)
         });
       } else {
         // Create new profile
-        response = await fetch(`http://localhost:5000/api/admin`, {
+        response = await fetch(`http://localhost:5000/api/admin/`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(submissionData),
+          body: JSON.stringify(submissionData)
         });
       }
-  
+
       const result = await response.json();
-  
-      if (!response.ok) throw new Error(result.message);
-  
-      // Update local state with returned ID if it was a new profile
-      if (result.profile && result.profile.id) {
-        setProfileData(prev => ({
-          ...prev,
-          id: result.profile.id
-        }));
-      }
       
-      setIsEditing(false);
+      if (!response.ok) throw new Error(result.message);
+
+      // Store enrollment number in localStorage for future login
+      if (profileData.enrollmentNumber) {
+        localStorage.setItem('adminEnrollment', profileData.enrollmentNumber);
+      }
+
+      // Show success message
+      setSuccessMessage("Profile saved successfully!");
       setSaveSuccess(true);
-      setTimeout(() => setSaveSuccess(false), 3000);
+      
+      // Reset form after 2 seconds
+      setTimeout(() => {
+        setSaveSuccess(false);
+        setSuccessMessage("");
+        setIsEditing(false);
+      }, 2000);
     } catch (error) {
-      alert("Failed to save profile: " + error.message);
-      console.error(error);
+      console.error("Error saving profile:", error);
+      alert(error.message || "Failed to save profile");
     }
   };
 
-  const handleChangePassword = () => {
+  const handleChangePassword = async () => {
     setPasswordError("");
 
     if (passwordData.newPassword !== passwordData.confirmPassword) {
@@ -158,8 +212,20 @@ const AdminProfile = ({ isOpen, onClose, initialData }) => {
       return;
     }
 
-    // Simulate success
-    setTimeout(() => {
+    try {
+      const response = await fetch(`http://localhost:5000/api/admin/${profileData.id}/change-password`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          currentPassword: passwordData.currentPassword,
+          newPassword: passwordData.newPassword
+        }),
+      });
+
+      const result = await response.json();
+      
+      if (!response.ok) throw new Error(result.message);
+
       setIsChangingPassword(false);
       setPasswordData({
         currentPassword: "",
@@ -168,26 +234,23 @@ const AdminProfile = ({ isOpen, onClose, initialData }) => {
       });
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3000);
-    }, 800);
-  };
-
-  const handleAvatarUpload = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      setProfileData((prev) => ({
-        ...prev,
-        avatar: URL.createObjectURL(file),
-      }));
+    } catch (error) {
+      setPasswordError(error.message || "Failed to change password");
+      console.error(error);
     }
   };
 
   if (!isOpen) return null;
 
-
   return (
     <AnimatePresence>
       {isOpen && (
         <>
+          {saveSuccess && (
+            <div className="success-message">
+              {successMessage}
+            </div>
+          )}
           <motion.div
             className="profile-overlay"
             initial={{ opacity: 0 }}
@@ -209,31 +272,8 @@ const AdminProfile = ({ isOpen, onClose, initialData }) => {
             <div className="profile-content">
               <div className="profile-grid">
                 <div className="profile-sidebar">
-                  <div className="avatar-section">
-                    {profileData.avatar ? (
-                      <img 
-                        src={profileData.avatar} 
-                        alt="Profile" 
-                        className="profile-avatar"
-                      />
-                    ) : (
-                      <div className="avatar-placeholder">
-                        {profileData.name.split(' ').map(n => n[0]).join('')}
-                      </div>
-                    )}
-                    {isEditing && (
-                      <div className="avatar-upload">
-                        <label htmlFor="avatar-input" className="upload-btn">
-                          Change Photo
-                        </label>
-                        <input
-                          id="avatar-input"
-                          type="file"
-                          accept="image/*"
-                          onChange={handleAvatarUpload}
-                        />
-                      </div>
-                    )}
+                  <div className="avatar-placeholder">
+                    {profileData.name.split(' ').map(n => n?.[0] || '').join('')}
                   </div>
 
                   <div className="profile-info-brief">

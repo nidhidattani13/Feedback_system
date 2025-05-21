@@ -6,7 +6,10 @@ import authRoutes from './routes/auth.js';
 import adminRoutes from './routes/admin.js'; 
 import facultyRoutes from './routes/facultyRoutes.js';
 import noticeRoutes from './routes/notices.js';
-
+import subjectsRoutes from './routes/subjects.js';
+import groupRoutes from './routes/groups.js';
+import feedbackRoutes from './routes/feedbackRoutes.js';
+import studentRoutes from './routes/student.js';
 dotenv.config();
 
 // Supabase connection
@@ -28,10 +31,21 @@ const corsOptions = {
   origin: ['http://localhost:5173'], // match your frontend origin
   credentials: true,
 };
-app.use(cors(corsOptions)); // Apply globally
 
-// Middleware
+// Middleware setup
+app.use(cors(corsOptions));
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// API routes
+app.use('/api/auth', authRoutes);
+app.use('/api/admin', adminRoutes);
+app.use('/api/faculty', facultyRoutes);
+app.use('/api/notice', noticeRoutes);
+app.use('/api/subject', subjectsRoutes);
+app.use('/api/group', groupRoutes);
+app.use('/api/feedback', feedbackRoutes);
+app.use('/api/students', studentRoutes);
 
 // Root test route
 app.get("/", (req, res) => {
@@ -69,10 +83,12 @@ app.post("/api/notices-test", (req, res) => {
 app.use("/api/auth", authRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/faculty", facultyRoutes);
-app.use("/api/notices", noticeRoutes);
+app.use('/api/notices', noticeRoutes);
+app.use('/api/subjects', subjectsRoutes);
+app.use('/api/groups', groupRoutes);
 
 // Server start
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 5001;
 app.listen(PORT, () => {
   console.log(`✅ Server running on http://localhost:${PORT}`);
 });

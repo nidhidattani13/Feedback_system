@@ -8,4 +8,4 @@ const supabaseAnonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYm
 // Create Supabase client with correct parameter structure
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-export default supabase;
+export { supabase as default };

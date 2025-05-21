@@ -238,7 +238,7 @@ const AdminDashboard = () => {
       // if (error) throw error;
       
       localStorage.removeItem('userData');
-      window.location.href = '/login';
+      window.location.href = '/feedback-system/login';
     } catch (err) {
       console.error('Signout error:', err);
       alert('Error signing out. Please try again.');

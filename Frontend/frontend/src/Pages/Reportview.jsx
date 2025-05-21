@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import '../styles/ReportView.css';
+import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
 
 // Default preset questions for quick form creation
 const DEFAULT_PRESET = {
@@ -83,6 +85,8 @@ const ADDITIONAL_PRESETS = [
 ];
 
 const ReportView = ({ mode = "admin" }) => {
+  const navigate = useNavigate();
+  const API_URL = 'http://localhost:5000/api/feedback';
   // States for managing form creation and display
   const [presets, setPresets] = useState([]);
   const [selectedPreset, setSelectedPreset] = useState(null);
@@ -101,24 +105,11 @@ const ReportView = ({ mode = "admin" }) => {
   const [showRandomAssigner, setShowRandomAssigner] = useState(false);
   const [lastAssignedIds, setLastAssignedIds] = useState([]);
 
-  // Load presets and published form from localStorage on component mount
+  // Load presets and published form from database on component mount
   useEffect(() => {
-    const savedPresets = localStorage.getItem('formPresets');
-    if (savedPresets) {
-      setPresets(JSON.parse(savedPresets));
-    } else {
-      // Initialize with default presets if none exist
-      const initialPresets = [DEFAULT_PRESET, ...ADDITIONAL_PRESETS];
-      setPresets(initialPresets);
-      localStorage.setItem('formPresets', JSON.stringify(initialPresets));
-    }
+    // Load presets from database
+    fetchPresets();
 
-    const savedPublishedForm = localStorage.getItem('publishedForm');
-    if (savedPublishedForm) {
-      setPublishedForm(JSON.parse(savedPublishedForm));
-      setViewingPublishedForm(true);
-    }
-    
     // Load mock student data
     const mockStudents = loadMockStudents();
     setStudents(mockStudents);
@@ -378,8 +369,42 @@ const ReportView = ({ mode = "admin" }) => {
     }
   };
 
-  // Save the current form as a preset
-  const handleSavePreset = () => {
+  // Load form data from backend
+  useEffect(() => {
+    if (mode === 'student') {
+      // Student mode: fetch latest form
+      fetchLatestForm();
+    } else {
+      // Admin mode: fetch all forms
+      fetchAllForms();
+    }
+  }, [mode]);
+
+  // Fetch latest form for students
+  const fetchLatestForm = async () => {
+    try {
+      const response = await axios.get(`${API_URL}/form/latest`);
+      setPublishedForm(response.data);
+      setViewingPublishedForm(true);
+    } catch (error) {
+      console.error('Error fetching form:', error);
+      alert('Error loading feedback form. Please try again later.');
+    }
+  };
+
+  // Fetch all forms for admin
+  const fetchAllForms = async () => {
+    try {
+      const response = await axios.get(`${API_URL}/form`);
+      setPresets(response.data);
+    } catch (error) {
+      console.error('Error fetching forms:', error);
+      alert('Error loading feedback forms. Please try again later.');
+    }
+  };
+
+  // Save preset to database
+  const handleSavePreset = async () => {
     if (currentForm.name.trim() === "") {
       alert("Please provide a name for your form");
       return;
@@ -390,35 +415,69 @@ const ReportView = ({ mode = "admin" }) => {
       return;
     }
 
-    let updatedPresets;
-    const existingPresetIndex = presets.findIndex(p => p.name === currentForm.name);
-
-    if (existingPresetIndex >= 0) {
-      // Update existing preset
-      updatedPresets = [...presets];
-      updatedPresets[existingPresetIndex] = { ...currentForm };
-    } else {
-      // Add new preset
-      updatedPresets = [...presets, currentForm];
+    try {
+      const response = await axios.post(`${API_URL}/preset`, {
+        title: currentForm.name,
+        questions: currentForm.questions,
+        created_by: localStorage.getItem('userData')?.id
+      });
+      
+      // Update presets list
+      fetchPresets();
+      
+      // Show success message
+      alert('Form preset saved successfully!');
+    } catch (error) {
+      console.error('Error saving preset:', error);
+      alert('Error saving preset. Please try again.');
     }
-
-    setPresets(updatedPresets);
-    localStorage.setItem('formPresets', JSON.stringify(updatedPresets));
-    alert("Form preset saved successfully!");
   };
 
-  // Publish the current form for students
-  const handlePublishForm = () => {
+  // Fetch presets from database
+  const fetchPresets = async () => {
+    try {
+      const response = await axios.get(`${API_URL}/presets`);
+      setPresets(response.data);
+    } catch (error) {
+      console.error('Error fetching presets:', error);
+      alert('Error loading presets. Please try again.');
+    }
+  };
+
+  // Delete a preset form
+  const handleDeletePreset = async (presetId) => {
+    if (window.confirm("Are you sure you want to delete this preset?")) {
+      try {
+        await axios.delete(`${API_URL}/preset/${presetId}`);
+        // Update presets list
+        fetchPresets();
+      } catch (error) {
+        console.error('Error deleting preset:', error);
+        alert('Error deleting preset. Please try again.');
+      }
+    }
+  };
+  const handlePublishForm = async () => {
     if (currentForm.questions.length === 0) {
       alert("Please add at least one question before publishing");
       return;
     }
 
-    setPublishedForm(currentForm);
-    localStorage.setItem('publishedForm', JSON.stringify(currentForm));
-    setViewingPublishedForm(true);
-    setShowRandomAssigner(true);
-    alert("Form published successfully! Now you can assign it to students.");
+    try {
+      const response = await axios.post(`${API_URL}/form`, {
+        title: currentForm.name,
+        questions: currentForm.questions,
+        created_by: localStorage.getItem('userData')?.id
+      });
+      
+      setPublishedForm(response.data);
+      setViewingPublishedForm(true);
+      setShowRandomAssigner(true);
+      alert("Form published successfully! Now you can assign it to students.");
+    } catch (error) {
+      console.error('Error publishing form:', error);
+      alert('Error publishing form. Please try again.');
+    }
   };
 
   // Handle student input change
@@ -446,7 +505,7 @@ const ReportView = ({ mode = "admin" }) => {
   };
 
   // Submit student responses
-  const handleSubmitResponses = () => {
+  const handleSubmitResponses = async () => {
     // Check if all questions are answered
     const unansweredQuestions = publishedForm.questions.filter(
       q => studentResponses[q.id] === undefined || 
@@ -458,17 +517,19 @@ const ReportView = ({ mode = "admin" }) => {
       return;
     }
 
-    // Save responses to localStorage
-    const allResponses = JSON.parse(localStorage.getItem('studentResponses') || '[]');
-    const newResponse = {
-      id: Date.now(),
-      formName: publishedForm.name,
-      responses: studentResponses,
-      submittedAt: new Date().toISOString()
-    };
-    
-    localStorage.setItem('studentResponses', JSON.stringify([...allResponses, newResponse]));
-    setSubmitted(true);
+    try {
+      const response = await axios.post(`${API_URL}/response`, {
+        form_id: publishedForm.id,
+        responses: studentResponses,
+        student_id: localStorage.getItem('userData')?.id
+      });
+      
+      setSubmitted(true);
+      alert('Feedback submitted successfully!');
+    } catch (error) {
+      console.error('Error submitting feedback:', error);
+      alert('Error submitting feedback. Please try again.');
+    }
   };
 
   // Reset the form after submission
@@ -828,10 +889,16 @@ const ReportView = ({ mode = "admin" }) => {
                     <span className="question-count">{preset.questions.length} questions</span>
                   </div>
                   <div className="preset-preview">
-                    {preset.questions.slice(0, 2).map((q, i) => (
-                      <div key={i} className="preview-question">{q.label}</div>
-                    ))}
-                    {preset.questions.length > 2 && (
+                    {Array.isArray(preset.questions) ? (
+                      preset.questions.slice(0, 2).map((q, i) => (
+                        <div key={i} className="preview-question">
+                          {q && q.label ? q.label : 'No question label'}
+                        </div>
+                      ))
+                    ) : (
+                      <div className="preview-question">Invalid questions format</div>
+                    )}
+                    {Array.isArray(preset.questions) && preset.questions.length > 2 && (
                       <div className="preview-more">+{preset.questions.length - 2} more</div>
                     )}
                   </div>

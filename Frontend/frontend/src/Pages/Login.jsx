@@ -60,11 +60,20 @@ const Login = () => {
         localStorage.setItem("token", user.id);
         localStorage.setItem("userData", JSON.stringify(existingUser));
         
-        // Redirect based on enrollment number pattern
+        // If student, fetch their profile
         if (/^\d{11}$/.test(existingUser.enrollment)) {
-          navigate("/student-dashboard");
+          try {
+            const profileResponse = await fetch(`http://localhost:5000/api/student/enroll/${existingUser.enrollment}`);
+            if (profileResponse.ok) {
+              const profileData = await profileResponse.json();
+              localStorage.setItem("studentProfile", JSON.stringify(profileData));
+            }
+          } catch (error) {
+            console.error("Error fetching student profile:", error);
+          }
+          navigate("/feedback-system/student-dashboard");
         } else if (/^\d{4}$/.test(existingUser.enrollment)) {
-          navigate("/faculty-dashboard");
+          navigate("/feedback-system/faculty-dashboard");
         } else {
           navigate("/admin-dashboard");
         }
@@ -110,9 +119,9 @@ const Login = () => {
 
     // Redirect based on enrollment type
     if (/^\d{11}$/.test(enrollment)) {
-      navigate("/student-dashboard");
+      navigate("/feedback-system/student-dashboard");
     } else if (/^\d{6}$/.test(enrollment)) {
-      navigate("/faculty-dashboard");
+      navigate("/feedback-system/faculty-dashboard");
     } else {
       navigate("/admin-dashboard");
     }

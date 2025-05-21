@@ -4,6 +4,8 @@ import FacultyProfile from "./FacultyProfile";
 import * as XLSX from 'xlsx';
 import { fetchNotices } from "../../../../Backend/services/noticeService"; // Make sure this path is correct
 import supabase from "../../../../Backend/supabaseClient"; // Adjust the import path as necessary
+import { toast, ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 const FacultyDashboard = () => {
   // Existing state variables
@@ -27,102 +29,233 @@ const FacultyDashboard = () => {
   const [notices, setNotices] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
-  
+
+  // First effect to load user data
   useEffect(() => {
-    const loadData = async () => {
+    const loadUserData = async () => {
+      try {
+        await fetchFacultyProfile();
+      } catch (profileError) {
+        console.error("Error loading faculty profile:", profileError);
+        setError("Failed to load profile.");
+      }
+    };
+
+    loadUserData();
+  }, []);
+
+  // Second effect to load subjects and groups once userData is available
+  useEffect(() => {
+    const loadDashboardData = async () => {
+      if (!userData || !userData.id) return;
+      
       setIsLoading(true);
       setError(null);
-  
+
       try {
-        console.log("Starting to fetch notices...");
-        let fetchedNotices = [];
-  
+        // Load notices
         try {
-          fetchedNotices = await fetchNotices("all");
+          console.log("Starting to fetch notices...");
+          const fetchedNotices = await fetchNotices("all");
           console.log("Notices fetched successfully:", fetchedNotices);
+          setNotices(fetchedNotices || []);
         } catch (fetchError) {
           console.error("Error fetching notices:", fetchError);
           setError("Failed to load notices.");
         }
-  
-        setNotices(fetchedNotices || []);
-  
-        // Load user profile (faculty)
+
+        // Load subjects and groups
         try {
-          await fetchFacultyProfile();
-        } catch (profileError) {
-          console.error("Error loading faculty profile:", profileError);
-          setError(prev => prev || "Failed to load profile.");
-        }
-  
-        // Load subjects from localStorage
-        const storedSubjects = localStorage.getItem("subjects");
-        if (storedSubjects) {
-          setSubjects(JSON.parse(storedSubjects));
+          await Promise.all([
+            fetchSubjects(),
+            fetchGroups()
+          ]);
+        } catch (dataError) {
+          console.error("Error loading subjects or groups:", dataError);
+          setError(prev => prev || "Failed to load subjects or groups.");
         }
       } catch (generalError) {
         console.error("General error loading data:", generalError);
         setError("Failed to load data. Please try again later.");
-        setNotices([]);
       } finally {
         setIsLoading(false);
       }
     };
-  
-    loadData();
-  }, []);
-  
-  
+
+    loadDashboardData();
+  }, [userData]);
+
   const fetchFacultyProfile = async () => {
     const userDataString = localStorage.getItem("userData");
 
     if (userDataString) {
-      const { email } = JSON.parse(userDataString);
+      try {
+        const parsedUserData = JSON.parse(userDataString);
+        const { email } = parsedUserData;
 
-      // Try fetching profile from Supabase
-      const { data, error } = await supabase
-        .from("faculty_profiles")
-        .select("*")
-        .eq("email", email)
-        .single();
+        // Try fetching profile from Supabase
+        const { data, error } = await supabase
+          .from("faculty_profiles")
+          .select("*")
+          .eq("email", email)
+          .single();
 
-      if (data) {
-        setUserData(data);
-      } else {
-        console.warn("Supabase profile not found or error:", error?.message);
-
-        // Fallback default profile
-        setUserData({
-          name: "Dr. Jane Smith",
-          title: "Associate Professor",
-          department: "Computer Science",
-          email: "j.smith@university.edu",
-          phone: "+1 (555) 234-5678",
-          office: "Tech Building, Room 305",
-          officeHours: "Tue, Thu: 1-3 PM",
-          researchInterests: "AI, Machine Learning, Computer Vision",
-          courses: "CS101, CS450, CS550",
-          bio: "Faculty member specializing in artificial intelligence and machine learning with 10 years of teaching experience.",
+        if (data) {
+          console.log("Faculty profile fetched:", data);
+          setUserData(data);
+        } else {
+          console.warn("Supabase profile not found or error:", error?.message);
+          
+          // Check if we have id in the localStorage data
+          if (parsedUserData.id) {
+            setUserData(parsedUserData);
+          } else {
+            // Fallback default profile with a placeholder ID
+            setUserData({
+              id: "temp-id", // Placeholder ID
+              name: parsedUserData.name || "Faculty User",
+              title: "Professor",
+              department: parsedUserData.department || "Department",
+              email: email,
+              phone: parsedUserData.phone || "",
+              office: parsedUserData.office || "",
+              officeHours: parsedUserData.officeHours || "",
+              researchInterests: parsedUserData.researchInterests || "",
+              courses: parsedUserData.courses || "",
+              bio: parsedUserData.bio || "Faculty member"
+            });
+          }
+        }
+      } catch (e) {
+        console.error("Error parsing user data from localStorage:", e);
+        // Set minimal userData with placeholder ID
+        setUserData({ 
+          id: "temp-id",
+          name: "Faculty User",
+          email: "faculty@example.com" 
         });
       }
     } else {
       console.warn("No user data found in localStorage");
+      // Set minimal userData with placeholder ID for testing
+      setUserData({ 
+        id: "temp-id",
+        name: "Faculty User",
+        email: "faculty@example.com" 
+      });
     }
   };
-  
+
+  const fetchSubjects = async () => {
+    try {
+      if (!userData || !userData.id) {
+        console.warn("Cannot fetch subjects, userData or userData.id is missing");
+        return;
+      }
+
+      console.log("Fetching subjects for faculty ID:", userData.id);
+      
+      const { data, error } = await supabase
+        .from('subjects')
+        .select('*')
+        .eq('faculty_id', userData.id);
+
+      if (error) {
+        console.error("Supabase error fetching subjects:", error);
+        throw error;
+      }
+
+      console.log("Subjects fetched:", data);
+      
+      // Transform data if needed to match your component's expectations
+      const formattedSubjects = data.map(subject => ({
+        ...subject,
+        isActive: subject.is_active ?? true, // Handle null/undefined
+        members: subject.members_count ?? 0,
+        lastUpdated: subject.updated_at ? new Date(subject.updated_at).toLocaleDateString() : 'N/A',
+        plan: subject.plan ? JSON.parse(subject.plan) : []
+      }));
+
+      setSubjects(formattedSubjects);
+    } catch (error) {
+      console.error('Error fetching subjects:', error);
+      throw error;
+    }
+  };
+
+  const fetchGroups = async () => {
+    try {
+      if (!userData || !userData.id) {
+        console.warn("Cannot fetch groups, userData or userData.id is missing");
+        return;
+      }
+
+      console.log("Fetching groups for faculty ID:", userData.id);
+      
+      const { data, error } = await supabase
+        .from('groups')
+        .select('*')
+        .eq('faculty_id', userData.id);
+
+      if (error) {
+        console.error("Supabase error fetching groups:", error);
+        throw error;
+      }
+
+      console.log("Groups fetched:", data);
+      
+      // Transform data if needed to match your component's expectations
+      const formattedGroups = data.map(group => ({
+        ...group,
+        isActive: group.is_active ?? true, // Handle null/undefined
+        members: group.members_count ?? 0,
+        lastUpdated: group.updated_at ? new Date(group.updated_at).toLocaleDateString() : 'N/A'
+      }));
+
+      setGroups(formattedGroups);
+    } catch (error) {
+      console.error('Error fetching groups:', error);
+      throw error;
+    }
+  };
+
   const openProfileModal = () => setShowProfileModal(true);
   const closeProfileModal = () => setShowProfileModal(false);
 
-  const handleProfileUpdate = (updatedData) => {
-    setUserData(updatedData);
-    localStorage.setItem("userData", JSON.stringify(updatedData));
+  const handleProfileUpdate = async (updatedData) => {
+    try {
+      // Update in Supabase if we have a real ID
+      if (userData.id && userData.id !== "temp-id") {
+        const { error } = await supabase
+          .from('faculty_profiles')
+          .update(updatedData)
+          .eq('id', userData.id);
+        
+        if (error) throw error;
+      }
+      
+      // Update local state
+      setUserData(updatedData);
+      
+      // Update localStorage
+      const existingData = JSON.parse(localStorage.getItem("userData") || "{}");
+      localStorage.setItem("userData", JSON.stringify({
+        ...existingData,
+        ...updatedData
+      }));
+      
+      toast.success('Profile updated successfully!');
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      toast.error('Failed to update profile. Please try again.');
+    }
   };
-  
+
   const handleSubjectPlanUpload = (e) => {
     const file = e.target.files[0];
     if (file) {
       setSubjectPlanFile(file);
-      
+
       const reader = new FileReader();
       reader.onload = (evt) => {
         try {
@@ -130,10 +263,10 @@ const FacultyDashboard = () => {
           const workbook = XLSX.read(binaryData, { type: 'binary' });
           const firstSheetName = workbook.SheetNames[0];
           const worksheet = workbook.Sheets[firstSheetName];
-          
+
           // Convert the worksheet to JSON
           const jsonData = XLSX.utils.sheet_to_json(worksheet);
-          
+
           // Validate data has Week and Topic columns
           if (jsonData.length > 0 && 'Week' in jsonData[0] && 'Topic' in jsonData[0]) {
             setParsedPlan(jsonData);
@@ -160,49 +293,102 @@ const FacultyDashboard = () => {
     }
   };
 
-  const handleAddSubject = () => {
+  const handleAddSubject = async () => {
     if (newSubject.trim() !== "") {
-      const newSubjectObj = {
-        name: newSubject,
-        info: newSubjectInfo,
-        members: 0,
-        lastUpdated: new Date().toLocaleDateString(),
-        isActive: true,
-        plan: parsedPlan.length > 0 ? parsedPlan : null,
-      };
-      
-      const updatedSubjects = [...subjects, newSubjectObj];
-      setSubjects(updatedSubjects);
-      
-      // Save to localStorage
-      localStorage.setItem("subjects", JSON.stringify(updatedSubjects));
-      
-      // Reset form
-      setNewSubject("");
-      setNewSubjectInfo("");
-      setSubjectPlanFile(null);
-      setParsedPlan([]);
-      setShowPlanPreview(false);
-      setShowSubjectModal(false);
+      try {
+        if (!userData || !userData.id) {
+          toast.error('User profile not loaded. Please try again later.');
+          return;
+        }
+
+        const newSubjectData = {
+          name: newSubject,
+          info: newSubjectInfo,
+          plan: parsedPlan.length > 0 ? JSON.stringify(parsedPlan) : null,
+          faculty_id: userData.id,
+          is_active: true,
+          created_at: new Date().toISOString()
+        };
+
+        console.log("Adding new subject:", newSubjectData);
+
+        const { data, error } = await supabase
+          .from('subjects')
+          .insert(newSubjectData)
+          .select();
+
+        if (error) {
+          console.error("Error inserting subject:", error);
+          throw error;
+        }
+
+        console.log("Subject added, response:", data);
+
+        // Refresh subjects list
+        await fetchSubjects();
+
+        // Show success message
+        toast.success('Subject added successfully!');
+
+        // Reset form
+        setNewSubject("");
+        setNewSubjectInfo("");
+        setSubjectPlanFile(null);
+        setParsedPlan([]);
+        setShowPlanPreview(false);
+        setShowSubjectModal(false);
+      } catch (error) {
+        console.error('Error adding subject:', error);
+        toast.error('Failed to add subject. Please try again.');
+      }
     }
   };
 
-  const handleAddGroup = () => {
+  const handleAddGroup = async () => {
     if (newGroup.trim() !== "") {
-      setGroups([
-        ...groups,
-        {
+      try {
+        if (!userData || !userData.id) {
+          toast.error('User profile not loaded. Please try again later.');
+          return;
+        }
+
+        const newGroupData = {
           name: newGroup,
           info: newGroupInfo,
-          members: excelFile ? "Pending import" : 0,
-          lastUpdated: new Date().toLocaleDateString(),
-          isActive: true,
-        },
-      ]);
-      setNewGroup("");
-      setNewGroupInfo("");
-      setExcelFile(null);
-      setShowGroupModal(false);
+          faculty_id: userData.id,
+          is_active: true,
+          created_at: new Date().toISOString()
+        };
+
+        console.log("Adding new group:", newGroupData);
+
+        const { data, error } = await supabase
+          .from('groups')
+          .insert(newGroupData)
+          .select();
+
+        if (error) {
+          console.error("Error inserting group:", error);
+          throw error;
+        }
+
+        console.log("Group added, response:", data);
+
+        // Refresh groups list
+        await fetchGroups();
+
+        // Show success message
+        toast.success('Group added successfully!');
+
+        // Reset form
+        setNewGroup("");
+        setNewGroupInfo("");
+        setExcelFile(null);
+        setShowGroupModal(false);
+      } catch (error) {
+        console.error('Error adding group:', error);
+        toast.error('Failed to add group. Please try again.');
+      }
     }
   };
 
@@ -229,54 +415,104 @@ const FacultyDashboard = () => {
     }
   };
 
-  const toggleSubjectStatus = (index, event) => {
+  const toggleSubjectStatus = async (index, event) => {
     event.stopPropagation();
-    const updatedSubjects = [...subjects];
-    updatedSubjects[index].isActive = !updatedSubjects[index].isActive;
-    setSubjects(updatedSubjects);
-    
-    // Update localStorage
-    localStorage.setItem("subjects", JSON.stringify(updatedSubjects));
-  };
+    try {
+      const subject = subjects[index];
+      const { data, error } = await supabase
+        .from('subjects')
+        .update({
+          is_active: !subject.isActive
+        })
+        .eq('id', subject.id)
+        .select();
 
-  const toggleGroupStatus = (index, event) => {
-    event.stopPropagation();
-    const updatedGroups = [...groups];
-    updatedGroups[index].isActive = !updatedGroups[index].isActive;
-    setGroups(updatedGroups);
-  };
+      if (error) throw error;
 
-  const removeSubject = (index, event) => {
-    event.stopPropagation();
-    const updatedSubjects = [...subjects];
-    updatedSubjects.splice(index, 1);
-    setSubjects(updatedSubjects);
-    
-    // Update localStorage
-    localStorage.setItem("subjects", JSON.stringify(updatedSubjects));
-
-    if (expandedSubject === index) {
-      setExpandedSubject(null);
-    } else if (expandedSubject !== null && expandedSubject > index) {
-      setExpandedSubject(expandedSubject - 1);
+      // Refresh subjects list
+      await fetchSubjects();
+    } catch (error) {
+      console.error('Error updating subject status:', error);
+      toast.error('Failed to update subject status. Please try again.');
     }
   };
 
-  const removeGroup = (index, event) => {
+  const toggleGroupStatus = async (index, event) => {
     event.stopPropagation();
-    const updatedGroups = [...groups];
-    updatedGroups.splice(index, 1);
-    setGroups(updatedGroups);
+    try {
+      const group = groups[index];
+      const { data, error } = await supabase
+        .from('groups')
+        .update({
+          is_active: !group.isActive
+        })
+        .eq('id', group.id)
+        .select();
 
-    if (expandedGroup === index) {
-      setExpandedGroup(null);
-    } else if (expandedGroup !== null && expandedGroup > index) {
-      setExpandedGroup(expandedGroup - 1);
+      if (error) throw error;
+
+      // Refresh groups list
+      await fetchGroups();
+    } catch (error) {
+      console.error('Error updating group status:', error);
+      toast.error('Failed to update group status. Please try again.');
+    }
+  };
+
+  const removeSubject = async (index, event) => {
+    event.stopPropagation();
+    try {
+      const subject = subjects[index];
+      const { error } = await supabase
+        .from('subjects')
+        .delete()
+        .eq('id', subject.id);
+
+      if (error) throw error;
+
+      // Refresh subjects list
+      await fetchSubjects();
+      toast.success('Subject removed successfully!');
+    } catch (error) {
+      console.error('Error removing subject:', error);
+      toast.error('Failed to remove subject. Please try again.');
+    }
+  };
+
+  const removeGroup = async (index, event) => {
+    event.stopPropagation();
+    try {
+      const group = groups[index];
+      const { error } = await supabase
+        .from('groups')
+        .delete()
+        .eq('id', group.id);
+
+      if (error) throw error;
+
+      // Refresh groups list
+      await fetchGroups();
+      toast.success('Group removed successfully!');
+    } catch (error) {
+      console.error('Error removing group:', error);
+      toast.error('Failed to remove group. Please try again.');
     }
   };
 
   return (
     <div className="dashboard-container">
+      <ToastContainer
+        position="top-right"
+        autoClose={3000}
+        hideProgressBar={false}
+        newestOnTop={false}
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+        theme="light"
+      />
       <div className="main-content">
         <header className="content-header">
           <div className="header-controls">

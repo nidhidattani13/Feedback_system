@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import StudentProfile from "./StudentProfile";
+import axios from 'axios';
+import FeedbackForm from '../components/FeedbackForm';
 
 const StudentDashboard = () => {
   const [subjects, setSubjects] = useState([]);
@@ -13,8 +15,37 @@ const StudentDashboard = () => {
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [submitLoading, setSubmitLoading] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
+  const [feedbackForms, setFeedbackForms] = useState([]);
+  const [loadingForms, setLoadingForms] = useState(false);
+  const [error, setError] = useState(null);
+  const [selectedForm, setSelectedForm] = useState(null);
+  const [showForm, setShowForm] = useState(false);
 
-  // Mock data for initial setup
+  // Initialize data
+  useEffect(() => {
+    // Get user data from localStorage
+    const userDataString = localStorage.getItem("userData");
+    if (userDataString) {
+      const parsedUserData = JSON.parse(userDataString);
+      setUserData(parsedUserData);
+    } else {
+      // Sample user data if none exists
+      const sampleUserData = {
+        name: "Alex Johnson",
+        program: "Computer Science",
+        semester: "4th Semester",
+        email: "alex.johnson@example.com",
+        enrollmentNumber: "EN2021CS001"
+      };
+      localStorage.setItem("userData", JSON.stringify(sampleUserData));
+      setUserData(sampleUserData);
+    }
+
+    // Fetch feedback forms
+    fetchFeedbackForms();
+  }, []);
+
+  // Initialize data
   useEffect(() => {
     // Get user data from localStorage
     const userDataString = localStorage.getItem("userData");
@@ -116,63 +147,37 @@ const StudentDashboard = () => {
     } else {
       localStorage.setItem("studentReviews", JSON.stringify([]));
     }
+
+    // Fetch feedback forms
+    fetchFeedbackForms();
   }, []);
 
-  // Save notices to localStorage when they change
-  useEffect(() => {
-    if (notices.length > 0) {
-      localStorage.setItem("studentNotices", JSON.stringify(notices));
-    }
-  }, [notices]);
-
-  // Save reviews to localStorage when they change
-  useEffect(() => {
-    if (reviews.length > 0) {
-      localStorage.setItem("studentReviews", JSON.stringify(reviews));
-    }
-  }, [reviews]);
-
-  const toggleExpandSubject = (index) => {
-    if (expandedSubject === index) {
-      setExpandedSubject(null);
-    } else {
-      setExpandedSubject(index);
-    }
-  };
-
-  const markNoticeAsRead = (id) => {
-    const updatedNotices = notices.map((notice) =>
-      notice.id === id ? { ...notice, isRead: true } : notice
-    );
-    setNotices(updatedNotices);
-  };
-
-  const handleReviewSubmit = () => {
-    if (selectedSubject && reviewText.trim()) {
-      setSubmitLoading(true);
-      
-      // Simulate API call with timeout
-      setTimeout(() => {
-        const subjectObj = subjects.find(sub => sub.id === parseInt(selectedSubject));
-        const newReview = {
-          id: Date.now(),
-          subjectId: parseInt(selectedSubject),
-          subjectName: subjectObj.name,
-          faculty: subjectObj.faculty,
-          reviewText: reviewText,
-          date: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
-        };
-        
-        setReviews([newReview, ...reviews]);
-        setReviewText("");
-        setSelectedSubject("");
-        setShowReviewModal(false);
-        setSubmitLoading(false);
-      }, 1000);
-    }
-  };
-
   const unreadNoticesCount = notices.filter(notice => !notice.isRead).length;
+
+  // Fetch feedback forms
+  const fetchFeedbackForms = async () => {
+    try {
+      setLoadingForms(true);
+      const response = await axios.get('http://localhost:5000/api/feedback/form');
+      setFeedbackForms(response.data);
+      setError(null);
+    } catch (err) {
+      console.error('Error fetching feedback forms:', err);
+      setError('Failed to load feedback forms. Please try again later.');
+    } finally {
+      setLoadingForms(false);
+    }
+  };
+
+  const handleViewForm = (form) => {
+    setSelectedForm(form);
+    setShowForm(true);
+  };
+
+  const handleCloseForm = () => {
+    setSelectedForm(null);
+    setShowForm(false);
+  };
 
   return (
     <div className="dashboard-container">
@@ -214,6 +219,76 @@ const StudentDashboard = () => {
 
         <div className="content-area">
           <div className="dashboard-layout">
+            {/* Feedback Forms Section */}
+            <div className="feedback-forms-section">
+              <div className="section-header">
+                <h2 className="section-title">Feedback Forms</h2>
+                <button className="view-all-btn">View All</button>
+              </div>
+              
+              <div className="forms-grid">
+                {loadingForms ? (
+                  <div className="loading-indicator">
+                    <div className="spinner"></div>
+                    <span>Loading forms...</span>
+                  </div>
+                ) : error ? (
+                  <div className="error-message">{error}</div>
+                ) : feedbackForms.length === 0 ? (
+                  <div className="empty-state">
+                    <p>No feedback forms available at the moment.</p>
+                  </div>
+                ) : (
+                  feedbackForms.map((form) => (
+                    <motion.div
+                      key={form.id}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.5 }}
+                      className="form-card"
+                      onClick={() => handleViewForm(form)}
+                    >
+                      <div className="form-content">
+                        <h3>{form.title}</h3>
+                        <div className="form-meta">
+                          <span className="questions-count">
+                            {form.questions.length} questions
+                          </span>
+                          <span className="created-by">
+                            Created by: {form.created_by}
+                          </span>
+                        </div>
+                        <div className="form-actions">
+                          <button className="view-form-btn" onClick={() => handleViewForm(form)}>View Form</button>
+                        </div>
+                      </div>
+                    </motion.div>
+                  ))
+                )}
+              </div>
+            </div>
+
+            {/* Feedback Form Modal */}
+            {showForm && selectedForm && (
+              <motion.div
+                initial={{ opacity: 0.5 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="modal-overlay"
+                style={{
+                  position: 'fixed',
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  backgroundColor: 'rgba(0, 0, 0, 0.5)',
+                  zIndex: 1000,
+                }}
+              >
+                <FeedbackForm form={selectedForm} onClose={handleCloseForm} />
+              </motion.div>
+            )}
+
             {/* Left container with featured section and subjects */}
             <div className="left-container">
               <div className="featured-card">

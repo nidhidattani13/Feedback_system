@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { toast } from 'react-toastify';
 import { motion, AnimatePresence } from "framer-motion";
 import "../styles/StudentProfile.css";
 
@@ -12,17 +13,14 @@ const StudentProfile = ({ isOpen, onClose, initialData }) => {
     batch: "",
     email: "",
     phone: "",
-    avatar: null,
   });
 
   const [academicData, setAcademicData] = useState({
-    cgpa: [],
     sgpa: []
   });
 
   // New state for editing academic data
   const [isEditingAcademic, setIsEditingAcademic] = useState(false);
-  const [newCgpaEntry, setNewCgpaEntry] = useState({ year: "", value: "" });
   const [newSgpaEntry, setNewSgpaEntry] = useState({ semester: "", year: "", value: "" });
   
   const [isEditing, setIsEditing] = useState(false);
@@ -39,53 +37,105 @@ const StudentProfile = ({ isOpen, onClose, initialData }) => {
   // Fetch student data on modal open
   useEffect(() => {
     const fetchStudentProfile = async () => {
-      const studentId = initialData?.id || "s12345678"; // fallback
       try {
-        // In a real app, this would fetch from your API
-        const response = await fetch(`http://localhost:5000/api/student/${studentId}`);
-        const data = await response.json();
-        console.log("Fetched Student Data:", data);
+        const enrollmentNumber = initialData?.enrollmentNumber || "EN2021CS001"; // fallback
         
-        setProfileData({
-          id: data.id,
-          name: data.name,
-          enrollmentNumber: data.enrollmentNumber,
-          grNumber: data.grNumber,
-          program: data.program,
-          batch: data.batch,
-          email: data.email,
-          phone: data.phone,
-          avatar: data.avatar_url || null,
-        });
+        // First: Try to get student by enrollment number
+        const idRes = await fetch(`http://localhost:5000/api/students/enroll/${enrollmentNumber}`);
         
-        // Set academic data if available
-        if (data.cgpa || data.sgpa) {
-          setAcademicData({
-            cgpa: data.cgpa || [],
-            sgpa: data.sgpa || []
+        if (!idRes.ok) {
+          const errorText = await idRes.text();
+          console.error(`Failed to fetch student: ${errorText}`);
+          throw new Error('Student not found or server error');
+        }
+
+        const idData = await idRes.json();
+        
+        if (idRes.ok) {
+          // If student exists, get ID from response
+          const studentId = idData.id;
+          
+          // Fetch full profile by ID
+          const profileRes = await fetch(`http://localhost:5000/api/students/${studentId}`);
+          
+          if (!profileRes.ok) {
+            const errorText = await profileRes.text();
+            console.error(`Failed to fetch profile: ${errorText}`);
+            throw new Error('Failed to fetch profile data');
+          }
+
+          const profileData = await profileRes.json();
+
+          if (profileRes.ok && profileData) {
+            setProfileData({
+              id: profileData.id,
+              name: profileData.name || "",
+              enrollmentNumber: profileData.enrollmentNumber || "",
+              grNumber: profileData.grNumber || "",
+              program: profileData.program || "",
+              batch: profileData.batch || "",
+              email: profileData.email || "",
+              phone: profileData.phone || ""
+            });
+            
+            setAcademicData({
+              sgpa: profileData.sgpa || []
+            });
+          } else {
+            throw new Error('Failed to fetch profile data');
+          }
+        } else {
+          // If student doesn't exist, create new profile
+          const createRes = await fetch('http://localhost:5000/students', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              enrollmentNumber: initialData?.enrollmentNumber || "",
+              name: initialData?.name || "",
+              grNumber: initialData?.grNumber || "",
+              program: initialData?.program || "",
+              batch: initialData?.batch || "",
+              email: initialData?.email || "",
+              phone: initialData?.phone || ""
+            })
           });
+          
+          if (!createRes.ok) {
+            throw new Error('Failed to create profile');
+          }
+          
+          // After creation, get the ID
+          const createData = await createRes.json();
+          const studentId = createData.id;
+          
+          // Fetch the newly created profile
+          const profileRes = await fetch(`http://localhost:5000/students/${studentId}`);
+          const profileData = await profileRes.json();
+          
+          if (profileRes.ok && profileData) {
+            setProfileData({
+              id: profileData.id,
+              name: profileData.name || "",
+              enrollmentNumber: profileData.enrollmentNumber || "",
+              grNumber: profileData.grNumber || "",
+              program: profileData.program || "",
+              batch: profileData.batch || "",
+              email: profileData.email || "",
+              phone: profileData.phone || ""
+            });
+            
+            setAcademicData({
+              sgpa: profileData.sgpa || []
+            });
+          } else {
+            throw new Error('Failed to fetch created profile');
+          }
         }
       } catch (error) {
-        console.error("Failed to fetch student data:", error.message);
-        
-        // Simulate data for demonstration
-        setProfileData({
-          id: "s12345678",
-          name: "John Doe",
-          enrollmentNumber: "EN2021CS001",
-          grNumber: "GR9876543",
-          program: "B.Tech Computer Science",
-          batch: "2021-2025",
-          email: "john.doe@example.edu",
-          phone: "+91 9876543210",
-          avatar: null,
-        });
-        
-        // Initialize empty academic data
-        setAcademicData({
-          cgpa: [],
-          sgpa: []
-        });
+        console.error("Failed to fetch student profile:", error.message);
+        toast.error(error.message || "Failed to load profile. Please try again.");
       }
     };
 
@@ -108,7 +158,6 @@ const StudentProfile = ({ isOpen, onClose, initialData }) => {
         newPassword: "",
         confirmPassword: "",
       });
-      setNewCgpaEntry({ year: "", value: "" });
       setNewSgpaEntry({ semester: "", year: "", value: "" });
     }
   }, [isOpen]);
@@ -130,35 +179,76 @@ const StudentProfile = ({ isOpen, onClose, initialData }) => {
   };
 
   const handleSaveProfile = async () => {
-    // Basic validation
+    // Ensure we have all required fields
     if (!profileData.name || !profileData.enrollmentNumber || !profileData.email) {
       alert("Name, Enrollment Number, and Email are required.");
       return;
     }
+
+    // Generate a unique enrollment number if not provided
+    if (!profileData.enrollmentNumber.trim()) {
+      const timestamp = new Date().getTime();
+      profileData.enrollmentNumber = `EN${timestamp}`;
+    }
   
     try {
-      // Prepare data for submission
       const submissionData = {
-        ...profileData,
-        avatar_url: profileData.avatar
+        name: profileData.name,
+        enrollment_number: profileData.enrollmentNumber, // Use snake_case for database
+        gr_number: profileData.grNumber, // Use snake_case for database
+        program: profileData.program,
+        batch: profileData.batch,
+        email: profileData.email,
+        phone: profileData.phone,
       };
-      delete submissionData.avatar; // Remove the avatar field
-  
-      // This would be your actual API call
+
       let response;
       
-      // Simulate API call
-      setTimeout(() => {
-        setIsEditing(false);
-        setSaveSuccess(true);
-        setTimeout(() => setSaveSuccess(false), 3000);
-      }, 800);
+      // Check if we have an ID (existing profile)
+      if (profileData.id) {
+        response = await fetch(`http://localhost:5000/api/students/${profileData.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(submissionData),
+        });
+      } else {
+        // Create new profile
+        response = await fetch(`http://localhost:5000/api/students`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(submissionData),
+        });
+      }
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to save profile");
+      }
+
+      const data = await response.json();
+      
+      // Update local state with new/updated ID
+      setProfileData(prev => ({
+        ...prev,
+        id: data.data?.id || prev.id
+      }));
+
+      // Save academic data if available
+      if (academicData.sgpa.length > 0) {
+        await saveAcademicData();
+      }
+
+      setIsEditing(false);
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 3000);
     } catch (error) {
       alert("Failed to save profile: " + error.message);
       console.error(error);
     }
   };
 
+
+  
   const handleChangePassword = () => {
     setPasswordError("");
 
@@ -185,25 +275,6 @@ const StudentProfile = ({ isOpen, onClose, initialData }) => {
     }, 800);
   };
 
-  const handleAvatarUpload = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      setProfileData((prev) => ({
-        ...prev,
-        avatar: URL.createObjectURL(file),
-      }));
-    }
-  };
-
-  // Handle CGPA input change
-  const handleCgpaInputChange = (e) => {
-    const { name, value } = e.target;
-    setNewCgpaEntry(prev => ({
-      ...prev,
-      [name]: value
-    }));
-  };
-
   // Handle SGPA input change
   const handleSgpaInputChange = (e) => {
     const { name, value } = e.target;
@@ -211,29 +282,6 @@ const StudentProfile = ({ isOpen, onClose, initialData }) => {
       ...prev,
       [name]: value
     }));
-  };
-
-  // Add new CGPA entry
-  const addCgpaEntry = () => {
-    // Validate inputs
-    if (!newCgpaEntry.year || !newCgpaEntry.value) {
-      alert("Year and CGPA value are required.");
-      return;
-    }
-    
-    const cgpaValue = parseFloat(newCgpaEntry.value);
-    if (isNaN(cgpaValue) || cgpaValue < 0 || cgpaValue > 10) {
-      alert("Please enter a valid CGPA value between 0 and 10.");
-      return;
-    }
-
-    setAcademicData(prev => ({
-      ...prev,
-      cgpa: [...prev.cgpa, { ...newCgpaEntry, value: cgpaValue }]
-    }));
-    
-    // Reset input
-    setNewCgpaEntry({ year: "", value: "" });
   };
 
   // Add new SGPA entry
@@ -250,21 +298,20 @@ const StudentProfile = ({ isOpen, onClose, initialData }) => {
       return;
     }
 
+    // Extract semester number for sorting
+    const semesterNum = parseInt(newSgpaEntry.semester.replace(/\D/g, '')) || 0;
+
     setAcademicData(prev => ({
       ...prev,
-      sgpa: [...prev.sgpa, { ...newSgpaEntry, value: sgpaValue }]
+      sgpa: [...prev.sgpa, { 
+        ...newSgpaEntry, 
+        value: sgpaValue,
+        semesterNum: semesterNum // Store semester number for sorting
+      }]
     }));
     
     // Reset input
     setNewSgpaEntry({ semester: "", year: "", value: "" });
-  };
-
-  // Remove CGPA entry
-  const removeCgpaEntry = (index) => {
-    setAcademicData(prev => ({
-      ...prev,
-      cgpa: prev.cgpa.filter((_, i) => i !== index)
-    }));
   };
 
   // Remove SGPA entry
@@ -276,17 +323,31 @@ const StudentProfile = ({ isOpen, onClose, initialData }) => {
   };
 
   // Save academic data
-  const saveAcademicData = () => {
-    // Here you would typically send the data to your backend
-    // For now, just simulate success
-    setTimeout(() => {
+  const saveAcademicData = async () => {
+    try {
+      // Here you would send the SGPA data to your backend
+      const response = await fetch(`http://localhost:5000/api/student/${profileData.id}/academic`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sgpa: academicData.sgpa
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to save academic data");
+      }
+
       setIsEditingAcademic(false);
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3000);
-    }, 800);
+    } catch (error) {
+      alert("Failed to save academic data: " + error.message);
+      console.error(error);
+    }
   };
 
-  // Format CGPA/SGPA with coloring based on value
+  // Format SGPA/CGPA with coloring based on value
   const getGradeColor = (value) => {
     if (value >= 9.0) return "excellent-grade";
     if (value >= 8.0) return "good-grade";
@@ -294,12 +355,22 @@ const StudentProfile = ({ isOpen, onClose, initialData }) => {
     return "below-average-grade";
   };
 
-  // Calculate current overall CGPA
-  const calculateOverallCGPA = () => {
-    if (academicData.cgpa.length === 0) return null;
+  // Calculate current CGPA from SGPA values
+  const calculateCGPA = () => {
+    if (academicData.sgpa.length === 0) return null;
     
-    const total = academicData.cgpa.reduce((sum, item) => sum + item.value, 0);
-    return (total / academicData.cgpa.length).toFixed(2);
+    const total = academicData.sgpa.reduce((sum, item) => sum + parseFloat(item.value), 0);
+    return (total / academicData.sgpa.length).toFixed(2);
+  };
+
+  // Sort SGPA entries by semester number (for display)
+  const sortedSgpaEntries = () => {
+    return [...academicData.sgpa].sort((a, b) => {
+      // Extract semester numbers if they exist
+      const aNum = a.semesterNum || parseInt(a.semester.replace(/\D/g, '')) || 0;
+      const bNum = b.semesterNum || parseInt(b.semester.replace(/\D/g, '')) || 0;
+      return aNum - bNum;
+    });
   };
 
   if (!isOpen) return null;
@@ -345,30 +416,9 @@ const StudentProfile = ({ isOpen, onClose, initialData }) => {
               <div className="profile-grid">
                 <div className="profile-sidebar">
                   <div className="avatar-section">
-                    {profileData.avatar ? (
-                      <img 
-                        src={profileData.avatar} 
-                        alt="Profile" 
-                        className="profile-avatar"
-                      />
-                    ) : (
-                      <div className="avatar-placeholder">
-                        {profileData.name.split(' ').map(n => n[0]).join('')}
-                      </div>
-                    )}
-                    {isEditing && (
-                      <div className="avatar-upload">
-                        <label htmlFor="avatar-input" className="upload-btn">
-                          Change Photo
-                        </label>
-                        <input
-                          id="avatar-input"
-                          type="file"
-                          accept="image/*"
-                          onChange={handleAvatarUpload}
-                        />
-                      </div>
-                    )}
+                    <div className="avatar-placeholder">
+                      {profileData.name.split(' ').map(n => n[0]).join('')}
+                    </div>
                   </div>
 
                   <div className="profile-info-brief">
@@ -376,6 +426,16 @@ const StudentProfile = ({ isOpen, onClose, initialData }) => {
                     <p className="enrollment-number">{profileData.enrollmentNumber}</p>
                     <div className="program-badge">{profileData.program}</div>
                     <div className="batch-info">{profileData.batch}</div>
+                    
+                    {/* Display CGPA in sidebar for quick reference */}
+                    {calculateCGPA() && (
+                      <div className="cgpa-sidebar">
+                        <div className="cgpa-label">Current CGPA</div>
+                        <div className={`cgpa-value ${getGradeColor(calculateCGPA())}`}>
+                          {calculateCGPA()}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -623,80 +683,25 @@ const StudentProfile = ({ isOpen, onClose, initialData }) => {
                         )}
                       </div>
                       
-                      {/* CGPA Section */}
+                      {/* Current CGPA Display */}
                       <div className="academic-block">
                         <h4>Cumulative Grade Point Average (CGPA)</h4>
                         
-                        {isEditingAcademic && (
-                          <div className="add-grade-form">
-                            <div className="form-grid">
-                              <div className="form-group">
-                                <label>Academic Year</label>
-                                <input
-                                  type="text"
-                                  name="year"
-                                  placeholder="e.g., Year 1 (2021-22)"
-                                  value={newCgpaEntry.year}
-                                  onChange={handleCgpaInputChange}
-                                />
+                        {calculateCGPA() ? (
+                          <div className="current-cgpa">
+                            <div className="cgpa-card">
+                              <div className="cgpa-header">Current CGPA</div>
+                              <div className={`cgpa-value-large ${getGradeColor(calculateCGPA())}`}>
+                                {calculateCGPA()}
                               </div>
-                              <div className="form-group">
-                                <label>CGPA Value</label>
-                                <input
-                                  type="number"
-                                  name="value"
-                                  placeholder="e.g., 8.5"
-                                  min="0"
-                                  max="10"
-                                  step="0.01"
-                                  value={newCgpaEntry.value}
-                                  onChange={handleCgpaInputChange}
-                                />
-                              </div>
-                              <div className="form-group">
-                                <button 
-                                  className="add-button"
-                                  onClick={addCgpaEntry}
-                                >
-                                  Add CGPA Entry
-                                </button>
+                              <div className="cgpa-note">
+                                Calculated from all semester performances
                               </div>
                             </div>
                           </div>
-                        )}
-                        
-                        {academicData.cgpa.length > 0 ? (
-                          <div className="grades-container">
-                            {academicData.cgpa.map((item, index) => (
-                              <div key={`cgpa-${index}`} className="grade-card">
-                                <div className="grade-year">{item.year}</div>
-                                <div className={`grade-value ${getGradeColor(item.value)}`}>
-                                  {parseFloat(item.value).toFixed(2)}
-                                </div>
-                                {isEditingAcademic && (
-                                  <button 
-                                    className="remove-btn"
-                                    onClick={() => removeCgpaEntry(index)}
-                                  >
-                                    Remove
-                                  </button>
-                                )}
-                              </div>
-                            ))}
-                          </div>
                         ) : (
                           <div className="empty-state">
-                            <p>No CGPA records added yet. {isEditingAcademic ? 'Use the form above to add your CGPA.' : 'Click Edit to add your CGPA records.'}</p>
-                          </div>
-                        )}
-                        
-                        {/* Current Overall CGPA */}
-                        {academicData.cgpa.length > 0 && (
-                          <div className="current-cgpa">
-                            <span>Current Overall CGPA:</span>
-                            <span className={`grade-value ${getGradeColor(calculateOverallCGPA())}`}>
-                              {calculateOverallCGPA()}
-                            </span>
+                            <p>CGPA will be calculated from your semester-wise SGPA entries.</p>
                           </div>
                         )}
                       </div>
@@ -755,7 +760,7 @@ const StudentProfile = ({ isOpen, onClose, initialData }) => {
                         
                         {academicData.sgpa.length > 0 ? (
                           <div className="grades-container">
-                            {academicData.sgpa.map((item, index) => (
+                            {sortedSgpaEntries().map((item, index) => (
                               <div key={`sgpa-${index}`} className="grade-card">
                                 <div className="grade-info">
                                   <div className="grade-semester">{item.semester}</div>

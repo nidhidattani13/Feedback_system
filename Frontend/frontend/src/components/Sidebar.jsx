@@ -17,10 +17,10 @@ export default function Sidebar() {
       <h2 style={{ textAlign: "center", marginBottom: "20px" }}>Menu</h2>
       {/* {[
         { to: "/", label: "Home" },
-        { to: "/student-dashboard", label: "Student Dashboard" },
-        { to: "/faculty-dashboard", label: "Faculty Dashboard" },
-        { to: "/admin-dashboard", label: "Admin Dashboard" },
-        { to: "/report", label: "Reports" },
+        { to: "/feedback-system/student-dashboard", label: "Student Dashboard" },
+        { to: "/feedback-system/faculty-dashboard", label: "Faculty Dashboard" },
+        { to: "/feedback-system/admin-dashboard", label: "Admin Dashboard" },
+        { to: "/feedback-system/report", label: "Reports" },
       ].map((item) => (
         <Link
           key={item.to}
