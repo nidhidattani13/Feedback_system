@@ -1,10 +1,16 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useNavigate } from "react-router-dom";
 import StudentProfile from "./StudentProfile";
-import axios from 'axios';
+import api from '../utils/axiosConfig';
 import FeedbackForm from '../components/Feedbackform';
+import supabase from "../../../../Backend/supabaseClient";
+import { toast, ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 const StudentDashboard = () => {
+  const navigate = useNavigate();
+  
   const [subjects, setSubjects] = useState([]);
   const [notices, setNotices] = useState([]);
   const [userData, setUserData] = useState(null);
@@ -17,9 +23,18 @@ const StudentDashboard = () => {
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [feedbackForms, setFeedbackForms] = useState([]);
   const [loadingForms, setLoadingForms] = useState(false);
+  const [loadingNotices, setLoadingNotices] = useState(false);
   const [error, setError] = useState(null);
   const [selectedForm, setSelectedForm] = useState(null);
   const [showForm, setShowForm] = useState(false);
+  const [showSubjectFeedbackModal, setShowSubjectFeedbackModal] = useState(false);
+  const [selectedSubjectForFeedback, setSelectedSubjectForFeedback] = useState(null);
+  const [subjectFeedback, setSubjectFeedback] = useState({
+    rating: 5,
+    comment: '',
+    difficulty: 3,
+    wouldRecommend: true
+  });
 
   // Initialize data
   useEffect(() => {
@@ -43,6 +58,9 @@ const StudentDashboard = () => {
 
     // Fetch feedback forms
     fetchFeedbackForms();
+    
+    // Fetch notices from backend
+    fetchNotices();
   }, []);
 
   // Initialize data
@@ -99,46 +117,8 @@ const StudentDashboard = () => {
     ];
     setSubjects(initialSubjects);
 
-    // Mock notice data
-    const initialNotices = [
-      {
-        id: 1,
-        title: "Midterm Exams Schedule",
-        date: "Apr 15, 2025",
-        content: "Midterm exams will be held from April 25th to May 5th. Please check the schedule on the university portal.",
-        isRead: false,
-      },
-      {
-        id: 2,
-        title: "Registration for Next Semester",
-        date: "Apr 12, 2025",
-        content: "Registration for next semester courses will begin on April 20th. Please consult with your academic advisor before registering.",
-        isRead: false,
-      },
-      {
-        id: 3,
-        title: "Campus Career Fair",
-        date: "Apr 10, 2025",
-        content: "The annual campus career fair will be held on April 22nd from 10 AM to 4 PM in the Student Union Building.",
-        isRead: true,
-      },
-      {
-        id: 4,
-        title: "Library Hours Extended",
-        date: "Apr 8, 2025",
-        content: "The university library will have extended hours during the exam period, staying open until midnight from April 20th to May 10th.",
-        isRead: true,
-      },
-    ];
-
-    // Check localStorage for previously saved notices
-    const savedNotices = localStorage.getItem("studentNotices");
-    if (savedNotices) {
-      setNotices(JSON.parse(savedNotices));
-    } else {
-      setNotices(initialNotices);
-      localStorage.setItem("studentNotices", JSON.stringify(initialNotices));
-    }
+    // Initialize notices as empty array - will be populated by fetchNotices
+    setNotices([]);
 
     // Check localStorage for previously saved reviews
     const savedReviews = localStorage.getItem("studentReviews");
@@ -158,7 +138,7 @@ const StudentDashboard = () => {
   const fetchFeedbackForms = async () => {
     try {
       setLoadingForms(true);
-      const response = await axios.get('http://localhost:5000/api/feedback/form');
+      const response = await api.get('/feedback/form');
       setFeedbackForms(response.data);
       setError(null);
     } catch (err) {
@@ -166,6 +146,75 @@ const StudentDashboard = () => {
       setError('Failed to load feedback forms. Please try again later.');
     } finally {
       setLoadingForms(false);
+    }
+  };
+
+  // Fetch notices from backend
+  const fetchNotices = async () => {
+    try {
+      setLoadingNotices(true);
+      const response = await api.get('/notices');
+      const fetchedNotices = response.data.map(notice => ({
+        ...notice,
+        content: notice.text || notice.content, // Handle both text and content fields
+        isRead: false, // Default to unread for new notices
+        date: notice.date || new Date(notice.created_at).toLocaleDateString()
+      }));
+      
+      setNotices(fetchedNotices);
+      console.log('Notices fetched successfully:', fetchedNotices);
+    } catch (err) {
+      console.error('Error fetching notices:', err);
+      // Fallback to empty notices array
+      setNotices([]);
+    } finally {
+      setLoadingNotices(false);
+    }
+  };
+
+  // Mark notice as read
+  const markNoticeAsRead = (noticeId) => {
+    setNotices(prevNotices => 
+      prevNotices.map(notice => 
+        notice.id === noticeId 
+          ? { ...notice, isRead: true }
+          : notice
+      )
+    );
+  };
+
+  // Handle review submission
+  const handleReviewSubmit = () => {
+    if (!selectedSubject || !reviewText.trim()) {
+      return;
+    }
+
+    const selectedSubjectData = subjects.find(s => s.id == selectedSubject);
+    if (!selectedSubjectData) return;
+
+    const newReview = {
+      id: Date.now(),
+      subjectName: selectedSubjectData.name,
+      faculty: selectedSubjectData.faculty,
+      reviewText: reviewText.trim(),
+      date: new Date().toLocaleDateString()
+    };
+
+    setReviews(prev => [newReview, ...prev]);
+    localStorage.setItem("studentReviews", JSON.stringify([newReview, ...reviews]));
+
+    // Reset form
+    setSelectedSubject("");
+    setReviewText("");
+    setShowReviewModal(false);
+    setSubmitLoading(false);
+  };
+
+  const toggleExpandSubject = (index) => {
+    if (expandedSubject === index) {
+      setExpandedSubject(null);
+    } else {
+      setExpandedSubject(index);
     }
   };
 
@@ -179,32 +228,128 @@ const StudentDashboard = () => {
     setShowForm(false);
   };
 
+  // Handle subject feedback
+  const handleSubjectFeedback = (subject) => {
+    setSelectedSubjectForFeedback(subject);
+    setSubjectFeedback({
+      rating: 5,
+      comment: '',
+      difficulty: 3,
+      wouldRecommend: true
+    });
+    setShowSubjectFeedbackModal(true);
+  };
+
+  const handleSubmitSubjectFeedback = async () => {
+    if (!selectedSubjectForFeedback || !subjectFeedback.comment.trim()) {
+      toast.error('Please provide a comment for your feedback');
+      return;
+    }
+
+    try {
+      const feedbackData = {
+        subjectId: selectedSubjectForFeedback.id,
+        subjectName: selectedSubjectForFeedback.name,
+        faculty: selectedSubjectForFeedback.faculty,
+        rating: subjectFeedback.rating,
+        comment: subjectFeedback.comment,
+        difficulty: subjectFeedback.difficulty,
+        wouldRecommend: subjectFeedback.wouldRecommend,
+        studentId: userData?.enrollmentNumber || 'unknown',
+        studentName: userData?.name || 'Unknown Student'
+      };
+
+      // Save to localStorage for now (you can later integrate with backend)
+      const existingFeedback = JSON.parse(localStorage.getItem('subjectFeedback') || '[]');
+      const newFeedback = {
+        ...feedbackData,
+        id: Date.now(),
+        date: new Date().toISOString()
+      };
+      
+      localStorage.setItem('subjectFeedback', JSON.stringify([newFeedback, ...existingFeedback]));
+      
+      toast.success('Feedback submitted successfully!');
+      setShowSubjectFeedbackModal(false);
+      setSelectedSubjectForFeedback(null);
+    } catch (error) {
+      console.error('Error submitting feedback:', error);
+      toast.error('Failed to submit feedback. Please try again.');
+    }
+  };
+
+  const handleSignOut = async () => {
+    try {
+      // Clear localStorage
+      localStorage.removeItem('token');
+      localStorage.removeItem('userData');
+      localStorage.removeItem('enrollment');
+      localStorage.removeItem('studentProfile');
+      localStorage.removeItem('tempUserData');
+      localStorage.removeItem('studentReviews');
+
+      // Sign out from Supabase if using Google auth
+      await supabase.auth.signOut();
+
+      // Show success message
+      toast.success('Signed out successfully!');
+
+      // Navigate to login page
+      navigate('/feedback-system/login');
+    } catch (error) {
+      console.error('Error signing out:', error);
+      toast.error('Error signing out. Please try again.');
+    }
+  };
+
   return (
     <div className="dashboard-container">
+      <ToastContainer
+        position="top-right"
+        autoClose={3000}
+        hideProgressBar={false}
+        newestOnTop={false}
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+        theme="light"
+      />
       <div className="main-content">
         <header className="content-header">
           <h2>Student Portal</h2>
           <div className="header-controls">
             {userData && (
               <>
-                <div className="user-info-compact">
-                  <span>Welcome, {userData.name || "Student"}</span>
-                  <div className="department-badge">
-                    {userData.program || "Student"}
-                  </div>
-                </div>
-                <div 
-                  className="profile-icon" 
-                  onClick={() => setShowProfileModal(true)}
-                  title="View Profile"
-                >
-                  {userData.avatar ? (
-                    <img src={userData.avatar} alt="Profile" className="avatar-small" />
-                  ) : (
-                    <div className="avatar-initials">
-                      {userData.name.split(' ').map(n => n[0]).join('')}
+                <div className="user-info-section">
+                  <div className="user-info-compact">
+                    <span>Welcome, {userData.name || "Student"}</span>
+                    <div className="department-badge">
+                      {userData.program || "Student"}
                     </div>
-                  )}
+                  </div>
+                  <div 
+                    className="profile-icon" 
+                    onClick={() => setShowProfileModal(true)}
+                    title="View Profile"
+                  >
+                    {userData.avatar ? (
+                      <img src={userData.avatar} alt="Profile" className="avatar-small" />
+                    ) : (
+                      <div className="avatar-initials">
+                        {userData.name.split(' ').map(n => n[0]).join('')}
+                      </div>
+                    )}
+                  </div>
+                  <button className="sign-out-btn" onClick={handleSignOut} title="Sign Out">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M9 21H5C4.46957 21 3.96086 20.7893 3.58579 20.4142C3.21071 20.0391 3 19.5304 3 19V5C3 4.46957 3.21071 3.96086 3.58579 3.58579C3.96086 3.21071 4.46957 3 5 3H9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      <path d="M16 17L21 12L16 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      <path d="M21 12H9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                    Sign Out
+                  </button>
                 </div>
               </>
             )}
@@ -399,6 +544,15 @@ const StudentDashboard = () => {
                                     <button className="manage-btn">
                                       Go to Subject
                                     </button>
+                                    <button 
+                                      className="feedback-btn"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleSubjectFeedback(subject);
+                                      }}
+                                    >
+                                      Give Feedback
+                                    </button>
                                   </div>
                                 </motion.div>
                               )}
@@ -456,13 +610,28 @@ const StudentDashboard = () => {
               <div className="section notices-section">
                 <div className="section-header">
                   <h2 className="section-title">Notices</h2>
-                  {unreadNoticesCount > 0 && (
-                    <div className="badge badge-primary">{unreadNoticesCount} New</div>
-                  )}
+                  <div className="header-controls">
+                    {unreadNoticesCount > 0 && (
+                      <div className="badge badge-primary">{unreadNoticesCount} New</div>
+                    )}
+                    <button 
+                      className="refresh-btn"
+                      onClick={fetchNotices}
+                      disabled={loadingNotices}
+                      title="Refresh notices"
+                    >
+                      🔄
+                    </button>
+                  </div>
                 </div>
 
                 <div className="notice-board">
-                  {notices.length > 0 ? (
+                  {loadingNotices ? (
+                    <div className="loading-indicator">
+                      <div className="spinner"></div>
+                      <span>Loading notices...</span>
+                    </div>
+                  ) : notices.length > 0 ? (
                     notices.map((notice) => (
                       <div 
                         className={`notice-item ${notice.isRead ? 'read' : 'unread'}`} 
@@ -559,6 +728,116 @@ const StudentDashboard = () => {
         )}
       </AnimatePresence>
 
+      {/* Subject Feedback Modal */}
+      <AnimatePresence>
+        {showSubjectFeedbackModal && selectedSubjectForFeedback && (
+          <>
+            <motion.div
+              className="overlay"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowSubjectFeedbackModal(false)}
+            />
+            <motion.div
+              className="modal-container feedback-modal"
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+            >
+              <h2 className="modal-heading">Feedback for {selectedSubjectForFeedback.name}</h2>
+              <p className="faculty-info">Faculty: {selectedSubjectForFeedback.faculty}</p>
+              
+              <div className="feedback-form">
+                <div className="rating-section">
+                  <label className="feedback-label">Overall Rating:</label>
+                  <div className="star-rating">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <button
+                        key={star}
+                        type="button"
+                        className={`star ${star <= subjectFeedback.rating ? 'active' : ''}`}
+                        onClick={() => setSubjectFeedback({...subjectFeedback, rating: star})}
+                      >
+                        ⭐
+                      </button>
+                    ))}
+                    <span className="rating-text">{subjectFeedback.rating}/5</span>
+                  </div>
+                </div>
+
+                <div className="difficulty-section">
+                  <label className="feedback-label">Difficulty Level:</label>
+                  <div className="difficulty-slider">
+                    <input
+                      type="range"
+                      min="1"
+                      max="5"
+                      value={subjectFeedback.difficulty}
+                      onChange={(e) => setSubjectFeedback({...subjectFeedback, difficulty: parseInt(e.target.value)})}
+                      className="slider"
+                    />
+                    <div className="difficulty-labels">
+                      <span>Very Easy</span>
+                      <span>Very Hard</span>
+                    </div>
+                    <span className="difficulty-value">{subjectFeedback.difficulty}/5</span>
+                  </div>
+                </div>
+
+                <div className="recommendation-section">
+                  <label className="feedback-label">Would you recommend this subject?</label>
+                  <div className="recommendation-buttons">
+                    <button
+                      type="button"
+                      className={`rec-btn ${subjectFeedback.wouldRecommend ? 'active' : ''}`}
+                      onClick={() => setSubjectFeedback({...subjectFeedback, wouldRecommend: true})}
+                    >
+                      Yes
+                    </button>
+                    <button
+                      type="button"
+                      className={`rec-btn ${!subjectFeedback.wouldRecommend ? 'active' : ''}`}
+                      onClick={() => setSubjectFeedback({...subjectFeedback, wouldRecommend: false})}
+                    >
+                      No
+                    </button>
+                  </div>
+                </div>
+
+                <div className="comment-section">
+                  <label className="feedback-label">Your Comments:</label>
+                  <textarea
+                    placeholder="Share your thoughts about this subject, faculty, and overall experience..."
+                    value={subjectFeedback.comment}
+                    onChange={(e) => setSubjectFeedback({...subjectFeedback, comment: e.target.value})}
+                    className="feedback-textarea"
+                    rows="4"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="button-container">
+                <button 
+                  onClick={handleSubmitSubjectFeedback} 
+                  className="confirm-button"
+                  disabled={!subjectFeedback.comment.trim()}
+                >
+                  Submit Feedback
+                </button>
+                <button
+                  onClick={() => setShowSubjectFeedbackModal(false)}
+                  className="cancel-button"
+                >
+                  Cancel
+                </button>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
       <style jsx>{`
         /* Global styles */
         * {
@@ -603,11 +882,42 @@ const StudentDashboard = () => {
           align-items: center;
         }
 
+        .user-info-section {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+        }
+
         .user-info-compact {
           display: flex;
           align-items: center;
           gap: 10px;
           font-size: 14px;
+        }
+
+        .sign-out-btn {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          background: #ff4f5a;
+          color: white;
+          border: none;
+          padding: 8px 16px;
+          border-radius: 8px;
+          font-size: 14px;
+          font-weight: 500;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+
+        .sign-out-btn:hover {
+          background: #e23e49;
+          transform: translateY(-1px);
+        }
+
+        .sign-out-btn svg {
+          width: 16px;
+          height: 16px;
         }
 
         .department-badge {
@@ -736,6 +1046,33 @@ const StudentDashboard = () => {
           justify-content: space-between;
           align-items: center;
           margin-bottom: 16px;
+        }
+
+        .header-controls {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+        }
+
+        .refresh-btn {
+          background: none;
+          border: none;
+          color: #ff4f5a;
+          font-size: 18px;
+          cursor: pointer;
+          padding: 4px;
+          border-radius: 4px;
+          transition: all 0.2s;
+        }
+
+        .refresh-btn:hover:not(:disabled) {
+          background: rgba(255, 79, 90, 0.1);
+          transform: rotate(180deg);
+        }
+
+        .refresh-btn:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
         }
 
         .section-title {
@@ -927,6 +1264,22 @@ const StudentDashboard = () => {
           background: #ff3a47;
         }
 
+        .feedback-btn {
+          background: #22c55e;
+          color: white;
+          border: none;
+          padding: 8px 16px;
+          border-radius: 6px;
+          cursor: pointer;
+          font-size: 14px;
+          transition: background-color 0.2s;
+          flex: 1;
+        }
+
+        .feedback-btn:hover {
+          background: #16a34a;
+        }
+
         .empty-state {
           display: flex;
           flex-direction: column;
@@ -948,6 +1301,93 @@ const StudentDashboard = () => {
           border-radius: 6px;
           cursor: pointer;
           font-size: 14px;
+        }
+
+        .loading-indicator {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          padding: 40px;
+          color: #999;
+          gap: 16px;
+        }
+
+        .spinner {
+          width: 32px;
+          height: 32px;
+          border: 3px solid #333;
+          border-top: 3px solid #ff4f5a;
+          border-radius: 50%;
+          animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+
+        /* Feedback Forms Section */
+        .feedback-forms-section {
+          background: #212121;
+          padding: 20px;
+          border-radius: 12px;
+          margin-bottom: 24px;
+        }
+
+        .forms-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+          gap: 16px;
+          margin-top: 16px;
+        }
+
+        .form-card {
+          background: #2a2a2a;
+          padding: 16px;
+          border-radius: 10px;
+          cursor: pointer;
+          transition: transform 0.2s, background-color 0.2s;
+        }
+
+        .form-card:hover {
+          transform: translateY(-3px);
+          background-color: #333;
+        }
+
+        .form-content h3 {
+          font-size: 16px;
+          font-weight: 500;
+          margin-bottom: 8px;
+          color: #ff4f5a;
+        }
+
+        .form-meta {
+          display: flex;
+          justify-content: space-between;
+          font-size: 12px;
+          color: #999;
+          margin-bottom: 12px;
+        }
+
+        .form-actions {
+          display: flex;
+          justify-content: flex-end;
+        }
+
+        .view-form-btn {
+          background: #ff4f5a;
+          color: white;
+          border: none;
+          padding: 6px 12px;
+          border-radius: 4px;
+          cursor: pointer;
+          font-size: 12px;
+          transition: background-color 0.2s;
+        }
+
+        .view-form-btn:hover {
+          background: #ff3a47;
         }
 
         /* Notice Board */
@@ -1075,6 +1515,20 @@ const StudentDashboard = () => {
         }
 
         /* Modal */
+        .modal-overlay {
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: rgba(0, 0, 0, 0.8);
+          backdrop-filter: blur(4px);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          z-index: 100;
+        }
+
         .overlay {
           position: fixed;
           top: 0;
@@ -1206,6 +1660,175 @@ const StudentDashboard = () => {
         .cancel-button:hover {
           background: #333;
           border-color: #999;
+        }
+
+        /* Feedback Modal Styles */
+        .feedback-modal {
+          max-width: 600px;
+          width: 90%;
+        }
+
+        .faculty-info {
+          color: #ff4f5a;
+          font-size: 14px;
+          margin-bottom: 20px;
+          text-align: center;
+        }
+
+        .feedback-form {
+          display: flex;
+          flex-direction: column;
+          gap: 20px;
+        }
+
+        .feedback-label {
+          display: block;
+          margin-bottom: 8px;
+          font-weight: 500;
+          color: #fff;
+        }
+
+        .rating-section {
+          text-align: center;
+        }
+
+        .star-rating {
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          gap: 8px;
+          margin-bottom: 8px;
+        }
+
+        .star {
+          background: none;
+          border: none;
+          font-size: 24px;
+          cursor: pointer;
+          transition: transform 0.2s;
+          color: #666;
+        }
+
+        .star.active {
+          color: #ffd700;
+        }
+
+        .star:hover {
+          transform: scale(1.1);
+        }
+
+        .rating-text {
+          margin-left: 12px;
+          font-weight: 500;
+          color: #ffd700;
+        }
+
+        .difficulty-section {
+          text-align: center;
+        }
+
+        .difficulty-slider {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 8px;
+        }
+
+        .slider {
+          width: 100%;
+          max-width: 300px;
+          height: 6px;
+          border-radius: 3px;
+          background: #333;
+          outline: none;
+          -webkit-appearance: none;
+        }
+
+        .slider::-webkit-slider-thumb {
+          -webkit-appearance: none;
+          appearance: none;
+          width: 20px;
+          height: 20px;
+          border-radius: 50%;
+          background: #ff4f5a;
+          cursor: pointer;
+        }
+
+        .slider::-moz-range-thumb {
+          width: 20px;
+          height: 20px;
+          border-radius: 50%;
+          background: #ff4f5a;
+          cursor: pointer;
+          border: none;
+        }
+
+        .difficulty-labels {
+          display: flex;
+          justify-content: space-between;
+          width: 100%;
+          max-width: 300px;
+          font-size: 12px;
+          color: #999;
+        }
+
+        .difficulty-value {
+          font-weight: 500;
+          color: #ff4f5a;
+        }
+
+        .recommendation-section {
+          text-align: center;
+        }
+
+        .recommendation-buttons {
+          display: flex;
+          gap: 12px;
+          justify-content: center;
+        }
+
+        .rec-btn {
+          padding: 8px 20px;
+          border: 2px solid #666;
+          background: transparent;
+          color: #ccc;
+          border-radius: 6px;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+
+        .rec-btn.active {
+          background: #22c55e;
+          border-color: #22c55e;
+          color: white;
+        }
+
+        .rec-btn:hover:not(.active) {
+          border-color: #999;
+          color: #fff;
+        }
+
+        .comment-section {
+          text-align: left;
+        }
+
+        .feedback-textarea {
+          width: 100%;
+          padding: 12px;
+          border: 1px solid #444;
+          background-color: #333;
+          border-radius: 8px;
+          font-size: 14px;
+          color: #fff;
+          resize: vertical;
+          min-height: 100px;
+          font-family: inherit;
+        }
+
+        .feedback-textarea:focus {
+          outline: none;
+          border-color: #ff4f5a;
+          box-shadow: 0 0 0 2px #ff4f5a33;
         }
 
         /* Responsive Adjustments */

@@ -10,6 +10,11 @@ import subjectsRoutes from './routes/subjects.js';
 import groupRoutes from './routes/groups.js';
 import feedbackRoutes from './routes/feedbackRoutes.js';
 import studentRoutes from './routes/student.js';
+import dailyFeedbackRoutes from './routes/dailyFeedbackRoutes.js';
+import assessmentPlanRoutes from './routes/assessmentPlanRoutes.js';
+import assessmentVerificationRoutes from './routes/assessmentVerificationRoutes.js';
+import reportRoutes from './routes/reportRoutes.js';
+import studentGroupRoutes from './routes/studentGroupRoutes.js';
 dotenv.config();
 
 // Supabase connection
@@ -46,6 +51,11 @@ app.use('/api/subject', subjectsRoutes);
 app.use('/api/group', groupRoutes);
 app.use('/api/feedback', feedbackRoutes);
 app.use('/api/students', studentRoutes);
+app.use('/api/daily-feedback', dailyFeedbackRoutes);
+app.use('/api/assessment-plan', assessmentPlanRoutes);
+app.use('/api/assessment-verification', assessmentVerificationRoutes);
+app.use('/api/reports', reportRoutes);
+app.use('/api/student-groups', studentGroupRoutes);
 
 // Root test route
 app.get("/", (req, res) => {

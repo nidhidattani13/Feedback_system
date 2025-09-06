@@ -1,9 +1,15 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useNavigate } from "react-router-dom";
 import "../styles/AdminDashboard.css";
 import AdminProfile from "./AdminProfile";
+import supabase from "../../../../Backend/supabaseClient";
+import { toast, ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 const AdminDashboard = () => {
+  const navigate = useNavigate();
+  
   const [subjects, setSubjects] = useState([]);
   const [faculty, setFaculty] = useState([]);
   const [notices, setNotices] = useState([]);
@@ -232,21 +238,44 @@ const AdminDashboard = () => {
 
   const confirmSignout = async () => {
     try {
-      // In a real app, you would call your authentication service here
-      // For example with Supabase:
-      // const { error } = await supabase.auth.signOut();
-      // if (error) throw error;
-      
+      // Clear localStorage
+      localStorage.removeItem('token');
       localStorage.removeItem('userData');
-      window.location.href = '/feedback-system/login';
+      localStorage.removeItem('enrollment');
+      localStorage.removeItem('studentProfile');
+      localStorage.removeItem('tempUserData');
+
+      // Sign out from Supabase if using Google auth
+      await supabase.auth.signOut();
+
+      // Show success message
+      toast.success('Signed out successfully!');
+
+      // Navigate to login page
+      navigate('/feedback-system/login');
+      
+      // Close the modal
+      setShowSignoutModal(false);
     } catch (err) {
       console.error('Signout error:', err);
-      alert('Error signing out. Please try again.');
+      toast.error('Error signing out. Please try again.');
     }
   };
 
   return (
     <div className="dashboard-container">
+      <ToastContainer
+        position="top-right"
+        autoClose={3000}
+        hideProgressBar={false}
+        newestOnTop={false}
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+        theme="light"
+      />
       <div className="main-content">
         <header className="content-header">
           <h2>Admin Dashboard</h2>

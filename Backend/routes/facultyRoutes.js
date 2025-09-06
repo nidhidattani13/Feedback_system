@@ -23,6 +23,33 @@ router.get('/test', (req, res) => {
   res.status(200).json({ message: 'Faculty routes are working correctly!' });
 });
 
+// GET faculty profile by email
+router.get('/profile/:email', async (req, res) => {
+  const { email } = req.params;
+  
+  try {
+    const { data, error } = await supabase
+      .from('faculty_profiles')
+      .select('*')
+      .eq('email', email)
+      .single();
+
+    if (error) {
+      console.error('Error fetching faculty profile:', error);
+      return res.status(404).json({ error: 'Faculty profile not found' });
+    }
+
+    if (!data) {
+      return res.status(404).json({ error: 'Faculty profile not found' });
+    }
+
+    res.json(data);
+  } catch (err) {
+    console.error('Unexpected error fetching faculty profile:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 router.post('/save', async (req, res) => {
   const profileData = req.body;
   console.log("📤 Incoming profileData:", profileData);

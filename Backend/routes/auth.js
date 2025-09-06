@@ -1,7 +1,10 @@
 // routes/auth.js
 import express from "express";
 import bcrypt from "bcryptjs";
-import supabase from "../supabaseClient.js"; 
+import jwt from "jsonwebtoken";
+import supabase from "../supabaseClient.js";
+
+const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key'; 
 
 const router = express.Router();
 
@@ -25,7 +28,24 @@ router.post("/login", async (req, res) => {
     if (!isPasswordCorrect) {
       return res.status(401).json({ message: "Invalid enrollment or password" });
     }
-    res.status(200).json({ message: "Login successful", user });
+
+    // Generate JWT token
+    const token = jwt.sign(
+      { 
+        id: user.id,
+        enrollment: user.enrollment,
+        email: user.email,
+        role: user.role || 'user'
+      },
+      JWT_SECRET,
+      { expiresIn: '24h' }
+    );
+
+    res.status(200).json({ 
+      message: "Login successful", 
+      user,
+      token 
+    });
   } catch (error) {
     console.error("❌ Login error:", error.message);
     res.status(500).json({ message: "Server error. Please try again." });

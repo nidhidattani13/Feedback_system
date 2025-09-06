@@ -1,13 +1,17 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useNavigate } from "react-router-dom";
 import FacultyProfile from "./FacultyProfile";
 import * as XLSX from 'xlsx';
 import { fetchNotices } from "../../../../Backend/services/noticeService"; // Make sure this path is correct
 import supabase from "../../../../Backend/supabaseClient"; // Adjust the import path as necessary
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import StudentGroupManager from "../components/StudentGroupManager";
 
 const FacultyDashboard = () => {
+  const navigate = useNavigate();
+  
   // Existing state variables
   const [subjects, setSubjects] = useState([]);
   const [groups, setGroups] = useState([]);
@@ -29,6 +33,10 @@ const FacultyDashboard = () => {
   const [notices, setNotices] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+  // Student group management
+  const [showStudentManager, setShowStudentManager] = useState(false);
+  const [selectedGroup, setSelectedGroup] = useState(null);
+  const [selectedSubject, setSelectedSubject] = useState(null);
 
   // First effect to load user data
   useEffect(() => {
@@ -93,38 +101,43 @@ const FacultyDashboard = () => {
         const parsedUserData = JSON.parse(userDataString);
         const { email } = parsedUserData;
 
-        // Try fetching profile from Supabase
-        const { data, error } = await supabase
-          .from("faculty_profiles")
-          .select("*")
-          .eq("email", email)
-          .single();
+        // Try fetching profile from backend API
+        try {
+          const token = localStorage.getItem('token');
+          const response = await fetch(`http://localhost:5000/api/faculty/profile/${email}`, {
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          });
 
-        if (data) {
-          console.log("Faculty profile fetched:", data);
-          setUserData(data);
-        } else {
-          console.warn("Supabase profile not found or error:", error?.message);
-          
-          // Check if we have id in the localStorage data
-          if (parsedUserData.id) {
-            setUserData(parsedUserData);
-          } else {
-            // Fallback default profile with a placeholder ID
-            setUserData({
-              id: "temp-id", // Placeholder ID
-              name: parsedUserData.name || "Faculty User",
-              title: "Professor",
-              department: parsedUserData.department || "Department",
-              email: email,
-              phone: parsedUserData.phone || "",
-              office: parsedUserData.office || "",
-              officeHours: parsedUserData.officeHours || "",
-              researchInterests: parsedUserData.researchInterests || "",
-              courses: parsedUserData.courses || "",
-              bio: parsedUserData.bio || "Faculty member"
-            });
+          if (response.ok) {
+            const profileData = await response.json();
+            console.log("Faculty profile fetched from backend:", profileData);
+            setUserData(profileData);
+            return;
           }
+        } catch (apiError) {
+          console.warn("Backend API profile fetch failed:", apiError);
+        }
+
+        // Fallback to localStorage data
+        if (parsedUserData.id) {
+          setUserData(parsedUserData);
+        } else {
+          // Fallback default profile with a placeholder ID
+          setUserData({
+            id: "temp-id", // Placeholder ID
+            name: parsedUserData.name || "Faculty User",
+            title: "Professor",
+            department: parsedUserData.department || "Department",
+            email: email,
+            phone: parsedUserData.phone || "",
+            office: parsedUserData.office || "",
+            officeHours: parsedUserData.officeHours || "",
+            researchInterests: parsedUserData.researchInterests || "",
+            courses: parsedUserData.courses || "",
+            bio: parsedUserData.bio || "Faculty member"
+          });
         }
       } catch (e) {
         console.error("Error parsing user data from localStorage:", e);
@@ -222,17 +235,41 @@ const FacultyDashboard = () => {
   const openProfileModal = () => setShowProfileModal(true);
   const closeProfileModal = () => setShowProfileModal(false);
 
+  const openStudentManager = (group) => {
+    console.log('Opening student manager for group:', group);
+    console.log('Available subjects:', subjects);
+    setSelectedGroup(group);
+    // For now, we'll use the first subject as default
+    // In a real implementation, you might want to add a subject selection dropdown
+    setSelectedSubject(subjects[0] || null);
+    setShowStudentManager(true);
+  };
+
+  const closeStudentManager = () => {
+    setShowStudentManager(false);
+    setSelectedGroup(null);
+    setSelectedSubject(null);
+  };
+
   const handleProfileUpdate = async (updatedData) => {
     try {
-      // Update in Supabase if we have a real ID
-      if (userData.id && userData.id !== "temp-id") {
-        const { error } = await supabase
-          .from('faculty_profiles')
-          .update(updatedData)
-          .eq('id', userData.id);
-        
-        if (error) throw error;
+      // Update via backend API
+      const token = localStorage.getItem('token');
+      const response = await fetch('http://localhost:5000/api/faculty/save', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(updatedData)
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update profile');
       }
+
+      const result = await response.json();
+      console.log('Profile update result:', result);
       
       // Update local state
       setUserData(updatedData);
@@ -499,6 +536,29 @@ const FacultyDashboard = () => {
     }
   };
 
+  const handleSignOut = async () => {
+    try {
+      // Clear localStorage
+      localStorage.removeItem('token');
+      localStorage.removeItem('userData');
+      localStorage.removeItem('enrollment');
+      localStorage.removeItem('studentProfile');
+      localStorage.removeItem('tempUserData');
+
+      // Sign out from Supabase if using Google auth
+      await supabase.auth.signOut();
+
+      // Show success message
+      toast.success('Signed out successfully!');
+
+      // Navigate to login page
+      navigate('/feedback-system/login');
+    } catch (error) {
+      console.error('Error signing out:', error);
+      toast.error('Error signing out. Please try again.');
+    }
+  };
+
   return (
     <div className="dashboard-container">
       <ToastContainer
@@ -521,27 +581,37 @@ const FacultyDashboard = () => {
           </div>
 
           {userData && (
-            <div className="user-info-compact" onClick={openProfileModal}>
-              <span>Welcome, {userData.name || "Faculty"}</span>
-              <div className="department-badge">
-                {userData.department || "Faculty"}
+            <div className="user-info-section">
+              <div className="user-info-compact" onClick={openProfileModal}>
+                <span>Welcome, {userData.name || "Faculty"}</span>
+                <div className="department-badge">
+                  {userData.department || "Faculty"}
+                </div>
+                <div className="profile-icon">
+                  {userData.avatar ? (
+                    <img
+                      src={userData.avatar}
+                      alt="Profile"
+                      className="avatar-mini"
+                    />
+                  ) : (
+                    <div className="avatar-placeholder-mini">
+                      {userData.name
+                        .split(" ")
+                        .map((n) => n[0])
+                        .join("")}
+                    </div>
+                  )}
+                </div>
               </div>
-              <div className="profile-icon">
-                {userData.avatar ? (
-                  <img
-                    src={userData.avatar}
-                    alt="Profile"
-                    className="avatar-mini"
-                  />
-                ) : (
-                  <div className="avatar-placeholder-mini">
-                    {userData.name
-                      .split(" ")
-                      .map((n) => n[0])
-                      .join("")}
-                  </div>
-                )}
-              </div>
+              <button className="sign-out-btn" onClick={handleSignOut} title="Sign Out">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M9 21H5C4.46957 21 3.96086 20.7893 3.58579 20.4142C3.21071 20.0391 3 19.5304 3 19V5C3 4.46957 3.21071 3.96086 3.58579 3.58579C3.96086 3.21071 4.46957 3 5 3H9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M16 17L21 12L16 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M21 12H9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+                Sign Out
+              </button>
             </div>
           )}
         </header>
@@ -761,8 +831,14 @@ const FacultyDashboard = () => {
                                     </button>
                                   </div>
                                   <div className="button-row">
-                                    <button className="manage-btn">
-                                      Manage
+                                    <button 
+                                      className="manage-btn"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        openStudentManager(group);
+                                      }}
+                                    >
+                                      Manage Students
                                     </button>
                                     <button
                                       className="remove-btn"
@@ -836,6 +912,22 @@ const FacultyDashboard = () => {
         initialData={userData}
         onUpdate={handleProfileUpdate}
       />
+
+      {/* Student Group Manager Modal */}
+      <AnimatePresence>
+        {showStudentManager && selectedGroup && (
+          <StudentGroupManager
+            group={selectedGroup}
+            subject={selectedSubject}
+            subjects={subjects}
+            onClose={closeStudentManager}
+            onUpdate={() => {
+              // Refresh groups data
+              fetchGroups();
+            }}
+          />
+        )}
+      </AnimatePresence>
 
       {/* Subject Modal */}
       <AnimatePresence>
@@ -1108,6 +1200,12 @@ const FacultyDashboard = () => {
           background-color: #444;
         }
 
+        .user-info-section {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+        }
+
         .user-info-compact {
           display: flex;
           align-items: center;
@@ -1121,6 +1219,31 @@ const FacultyDashboard = () => {
 
         .user-info-compact:hover {
           background-color: #333;
+        }
+
+        .sign-out-btn {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          background: #ff4f5a;
+          color: white;
+          border: none;
+          padding: 8px 16px;
+          border-radius: 8px;
+          font-size: 14px;
+          font-weight: 500;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+
+        .sign-out-btn:hover {
+          background: #e23e49;
+          transform: translateY(-1px);
+        }
+
+        .sign-out-btn svg {
+          width: 16px;
+          height: 16px;
         }
 
         .department-badge {

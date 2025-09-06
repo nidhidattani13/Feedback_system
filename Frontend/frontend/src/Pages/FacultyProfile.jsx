@@ -65,13 +65,16 @@ const FacultyProfile = ({ isOpen, onClose, initialData }) => {
 
   const handleSaveProfile = async () => {
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/profile`, {
-        method: 'PUT',
+      // Filter out enrollmentId as it doesn't exist in faculty_profiles table
+      const { enrollmentId, ...dataToSave } = profileData;
+      
+      const response = await fetch('http://localhost:5000/api/faculty/save', {
+        method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         },
-        body: JSON.stringify(profileData)
+        body: JSON.stringify(dataToSave)
       });
 
       if (!response.ok) {

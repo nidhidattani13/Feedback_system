@@ -63,10 +63,15 @@ console.log('studentId:', studentId);
 console.log('formattedResponses:', formattedResponses);
 
       // Submit the form
+      const token = localStorage.getItem('token');
       const response = await axios.post('http://localhost:5000/api/feedback/form/submit', {
         formId: form.id,
         responses: formattedResponses,
         studentId
+      }, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
       });
 
       toast.success('Form submitted successfully!');

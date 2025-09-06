@@ -57,7 +57,9 @@ const Login = () => {
       
       if (existingUser) {
         // User exists, store data and redirect
-        localStorage.setItem("token", user.id);
+        // For Google login, we'll use the Supabase session token
+        const { data: { session } } = await supabase.auth.getSession();
+        localStorage.setItem("token", session?.access_token || user.id);
         localStorage.setItem("userData", JSON.stringify(existingUser));
         
         // If student, fetch their profile
@@ -79,7 +81,9 @@ const Login = () => {
         }
       } else {
         // New user, redirect to profile completion page
-        localStorage.setItem("token", user.id);
+        // For Google login, we'll use the Supabase session token
+        const { data: { session } } = await supabase.auth.getSession();
+        localStorage.setItem("token", session?.access_token || user.id);
         localStorage.setItem("tempUserData", JSON.stringify({
           email: user.email,
           name: user.user_metadata?.full_name || '',
@@ -112,7 +116,7 @@ const Login = () => {
     }
 
     // Store user data locally
-    localStorage.setItem("token", "user-logged-in");
+    localStorage.setItem("token", result.token);
     localStorage.setItem("userData", JSON.stringify(result.user));
     localStorage.setItem("enrollment", enrollment);
     
